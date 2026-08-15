@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,34 +11,44 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { container } from '../../container';
 import { Worker } from '../../domain/entities/Worker';
-
-const SHIFTS = [
-  { id: 'morning', label: 'Mañana (7am - 1pm)', icon: 'weather-sunny' },
-  { id: 'afternoon', label: 'Tarde (1pm - 7pm)', icon: 'weather-sunset' },
-  { id: 'night', label: 'Guardia Nocturna', icon: 'weather-night' },
-  { id: '24h', label: 'Guardia 24 Horas', icon: 'clock-time-eight-outline' },
-];
-
-const DEPARTMENTS = [
-  'Emergencia Adultos',
-  'Emergencia Pediátrica',
-  'Quirófano Central',
-  'Hospitalización',
-  'Laboratorio Clínico',
-  'Mantenimiento / Servicios',
-];
+import { ShiftConfig, APP_CONFIG } from '../../domain/constants/appConfig';
 
 export default function PlanningScreen() {
   const [title, setTitle] = useState('');
-  const [selectedShift, setSelectedShift] = useState(SHIFTS[0].id);
-  const [selectedDept, setSelectedDept] = useState(DEPARTMENTS[0]);
+  const [shifts, setShifts] = useState<ShiftConfig[]>(APP_CONFIG.defaultShifts);
+  const [selectedShift, setSelectedShift] = useState<string>('morning');
+  const [departments, setDepartments] = useState<string[]>(APP_CONFIG.defaultDepartments);
+  const [selectedDept, setSelectedDept] = useState<string>(APP_CONFIG.defaultDepartments[0] || '');
   const [notes, setNotes] = useState('');
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [selectedWorkers, setSelectedWorkers] = useState<number[]>([]);
 
-  useEffect(() => {
-    container.getWorkersUseCase.execute().then(setWorkers).catch(console.error);
+  const loadData = useCallback(async () => {
+    try {
+      const [workersList, deptList, shiftList] = await Promise.all([
+        container.getWorkersUseCase.execute(),
+        container.configRepository.getDepartments(),
+        container.configRepository.getShifts(),
+      ]);
+      setWorkers(workersList);
+      if (deptList.length > 0) {
+        setDepartments(deptList);
+        setSelectedDept((prev) => (deptList.includes(prev) ? prev : deptList[0]));
+      }
+      if (shiftList.length > 0) {
+        setShifts(shiftList);
+        setSelectedShift((prev) =>
+          shiftList.some((s) => s.id === prev) ? prev : shiftList[0].id
+        );
+      }
+    } catch (error) {
+      console.error('Error loading planning configuration:', error);
+    }
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const toggleWorker = (id: number) => {
     if (selectedWorkers.includes(id)) {
@@ -58,9 +68,11 @@ export default function PlanningScreen() {
       return;
     }
 
+    const currentShiftLabel = shifts.find((s) => s.id === selectedShift)?.label || selectedShift;
+
     Alert.alert(
       '¡Planificación Creada!',
-      `Guardia asignada con éxito:\n\n• Área: ${selectedDept}\n• Turno: ${SHIFTS.find((s) => s.id === selectedShift)?.label}\n• Personal: ${selectedWorkers.length} asignado(s).`,
+      `Guardia asignada con éxito:\n\n• Área: ${selectedDept}\n• Turno: ${currentShiftLabel}\n• Personal: ${selectedWorkers.length} asignado(s).`,
       [
         {
           text: 'Entendido',
@@ -84,7 +96,7 @@ export default function PlanningScreen() {
         <View style={styles.headerTextContainer}>
           <Text style={styles.headerTitle}>Crear Planificación</Text>
           <Text style={styles.headerSubtitle}>
-            Asignación de guardias y turnos hospitalarios
+            Asignación de guardias y turnos de trabajo
           </Text>
         </View>
       </View>
@@ -103,9 +115,9 @@ export default function PlanningScreen() {
 
       {/* Department Selector */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Área / Departamento IVSS</Text>
+        <Text style={styles.sectionTitle}>Área / Departamento</Text>
         <View style={styles.chipRow}>
-          {DEPARTMENTS.map((dept) => {
+          {departments.map((dept) => {
             const isSelected = selectedDept === dept;
             return (
               <TouchableOpacity
@@ -114,7 +126,7 @@ export default function PlanningScreen() {
                 onPress={() => setSelectedDept(dept)}
               >
                 <MaterialCommunityIcons
-                  name="hospital-building"
+                  name="domain"
                   size={16}
                   color={isSelected ? '#FFFFFF' : '#94A3B8'}
                   style={{ marginRight: 6 }}
@@ -134,7 +146,7 @@ export default function PlanningScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Seleccionar Turno / Horario</Text>
         <View style={styles.shiftsGrid}>
-          {SHIFTS.map((shift) => {
+          {shifts.map((shift) => {
             const isSelected = selectedShift === shift.id;
             return (
               <TouchableOpacity
@@ -143,7 +155,7 @@ export default function PlanningScreen() {
                 onPress={() => setSelectedShift(shift.id)}
               >
                 <MaterialCommunityIcons
-                  name={shift.icon as any}
+                  name={(shift.icon || 'clock-outline') as any}
                   size={24}
                   color={isSelected ? '#38BDF8' : '#64748B'}
                 />
@@ -171,7 +183,7 @@ export default function PlanningScreen() {
         </View>
         {workers.length === 0 ? (
           <Text style={styles.emptyNotice}>
-            No hay trabajadores registrados en la base de datos. Ve a la pestaña
+            No hay trabajadores registrados aún. Ve a la pestaña
             de Trabajadores para añadirlos.
           </Text>
         ) : (
