@@ -1,4 +1,5 @@
 import { SQLiteWorkerRepository } from './infrastructure/adapters/SQLiteWorkerRepository';
+import { SQLiteConfigRepository } from './infrastructure/adapters/SQLiteConfigRepository';
 import { SupabaseSyncService } from './infrastructure/adapters/SupabaseSyncService';
 import { ViewShotImageService } from './infrastructure/adapters/ViewShotImageService';
 import { ExpoShareService } from './infrastructure/adapters/ExpoShareService';
@@ -10,6 +11,7 @@ import { GenerateReportImageUseCase } from './application/use-cases/GenerateRepo
 
 // --- Driven Adapters (Infrastructure) ---
 const workerRepository = new SQLiteWorkerRepository();
+const configRepository = new SQLiteConfigRepository();
 const syncService = new SupabaseSyncService();
 const imageService = new ViewShotImageService();
 const shareService = new ExpoShareService();
@@ -24,6 +26,7 @@ const generateReportImageUseCase = new GenerateReportImageUseCase(imageService, 
 export const container = {
   // Adapters
   workerRepository,
+  configRepository,
   syncService,
   imageService,
   shareService,
