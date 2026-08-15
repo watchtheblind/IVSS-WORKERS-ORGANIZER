@@ -5,6 +5,7 @@ import { AnimatedTabBar, TabItem } from '../components/AnimatedTabBar';
 import { APP_CONFIG } from '../../domain/constants/appConfig';
 import PlanningScreen from './PlanningScreen';
 import WorkersScreen from './WorkersScreen';
+import RoomsScreen from './RoomsScreen';
 import SettingsScreen from './SettingsScreen';
 
 const TABS: TabItem[] = [
@@ -21,6 +22,13 @@ const TABS: TabItem[] = [
     icon: 'account-outline',
     activeColor: '#10B981',
     activeBgColor: 'rgba(16, 185, 129, 0.15)',
+  },
+  {
+    key: 'rooms',
+    label: 'Salas',
+    icon: 'bed-outline',
+    activeColor: '#EF4444',
+    activeBgColor: 'rgba(239, 68, 68, 0.15)',
   },
   {
     key: 'settings',
@@ -42,6 +50,8 @@ export default function HomeScreen() {
       case 1:
         return <WorkersScreen />;
       case 2:
+        return <RoomsScreen />;
+      case 3:
         return <SettingsScreen />;
       default:
         return <PlanningScreen />;

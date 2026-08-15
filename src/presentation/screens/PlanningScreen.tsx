@@ -11,7 +11,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { container } from '../../container';
 import { Worker } from '../../domain/entities/Worker';
-import { ShiftConfig, APP_CONFIG } from '../../domain/constants/appConfig';
+import { ShiftConfig, RoomConfig, APP_CONFIG } from '../../domain/constants/appConfig';
 
 export default function PlanningScreen() {
   const [title, setTitle] = useState('');
@@ -19,16 +19,19 @@ export default function PlanningScreen() {
   const [selectedShift, setSelectedShift] = useState<string>('morning');
   const [departments, setDepartments] = useState<string[]>(APP_CONFIG.defaultDepartments);
   const [selectedDept, setSelectedDept] = useState<string>(APP_CONFIG.defaultDepartments[0] || '');
+  const [rooms, setRooms] = useState<RoomConfig[]>([]);
+  const [selectedRoom, setSelectedRoom] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [selectedWorkers, setSelectedWorkers] = useState<number[]>([]);
 
   const loadData = useCallback(async () => {
     try {
-      const [workersList, deptList, shiftList] = await Promise.all([
+      const [workersList, deptList, shiftList, roomList] = await Promise.all([
         container.getWorkersUseCase.execute(),
         container.configRepository.getDepartments(),
         container.configRepository.getShifts(),
+        container.configRepository.getRooms(),
       ]);
       setWorkers(workersList);
       if (deptList.length > 0) {
@@ -41,6 +44,7 @@ export default function PlanningScreen() {
           shiftList.some((s) => s.id === prev) ? prev : shiftList[0].id
         );
       }
+      setRooms(roomList);
     } catch (error) {
       console.error('Error loading planning configuration:', error);
     }
@@ -49,6 +53,8 @@ export default function PlanningScreen() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const departmentRooms = rooms.filter((r) => r.department === selectedDept);
 
   const toggleWorker = (id: number) => {
     if (selectedWorkers.includes(id)) {
@@ -69,16 +75,18 @@ export default function PlanningScreen() {
     }
 
     const currentShiftLabel = shifts.find((s) => s.id === selectedShift)?.label || selectedShift;
+    const roomText = selectedRoom ? `\n• Sala: ${selectedRoom}` : '';
 
     Alert.alert(
       '¡Planificación Creada!',
-      `Guardia asignada con éxito:\n\n• Área: ${selectedDept}\n• Turno: ${currentShiftLabel}\n• Personal: ${selectedWorkers.length} asignado(s).`,
+      `Guardia asignada con éxito:\n\n• Área: ${selectedDept}${roomText}\n• Turno: ${currentShiftLabel}\n• Personal: ${selectedWorkers.length} asignado(s).`,
       [
         {
           text: 'Entendido',
           onPress: () => {
             setTitle('');
             setNotes('');
+            setSelectedRoom('');
             setSelectedWorkers([]);
           },
         },
@@ -123,7 +131,10 @@ export default function PlanningScreen() {
               <TouchableOpacity
                 key={dept}
                 style={[styles.chip, isSelected && styles.chipActive]}
-                onPress={() => setSelectedDept(dept)}
+                onPress={() => {
+                  setSelectedDept(dept);
+                  setSelectedRoom('');
+                }}
               >
                 <MaterialCommunityIcons
                   name="domain"
@@ -141,6 +152,50 @@ export default function PlanningScreen() {
           })}
         </View>
       </View>
+
+      {/* Room (Sala) Selector for Selected Department */}
+      {departmentRooms.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Sala Asignada (Opcional)</Text>
+            {selectedRoom ? (
+              <TouchableOpacity onPress={() => setSelectedRoom('')}>
+                <Text style={styles.clearBadge}>Limpiar</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+          <View style={styles.chipRow}>
+            {departmentRooms.map((room) => {
+              const isSelected = selectedRoom === room.name;
+              return (
+                <TouchableOpacity
+                  key={room.id}
+                  style={[
+                    styles.roomChip,
+                    isSelected && styles.roomChipActive,
+                  ]}
+                  onPress={() => setSelectedRoom(isSelected ? '' : room.name)}
+                >
+                  <MaterialCommunityIcons
+                    name="bed-outline"
+                    size={16}
+                    color={isSelected ? '#FFFFFF' : '#EF4444'}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text
+                    style={[
+                      styles.roomChipText,
+                      isSelected && styles.roomChipTextActive,
+                    ]}
+                  >
+                    {room.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
 
       {/* Shift Selection */}
       <View style={styles.section}>
@@ -319,6 +374,11 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 10,
   },
+  clearBadge: {
+    fontSize: 12,
+    color: '#EF4444',
+    fontWeight: '600',
+  },
   input: {
     backgroundColor: '#1E293B',
     borderRadius: 12,
@@ -360,6 +420,29 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  roomChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  roomChipActive: {
+    backgroundColor: '#DC2626',
+    borderColor: '#EF4444',
+  },
+  roomChipText: {
+    color: '#CBD5E1',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  roomChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   shiftsGrid: {
     gap: 8,
