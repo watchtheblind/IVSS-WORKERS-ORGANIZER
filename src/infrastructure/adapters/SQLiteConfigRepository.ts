@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { ConfigRepository } from '../../domain/ports/ConfigRepository';
-import { APP_CONFIG, ShiftConfig } from '../../domain/constants/appConfig';
+import { APP_CONFIG, ShiftConfig, RoomConfig } from '../../domain/constants/appConfig';
 
 export class SQLiteConfigRepository implements ConfigRepository {
   private db: SQLite.SQLiteDatabase | null = null;
@@ -17,6 +17,14 @@ export class SQLiteConfigRepository implements ConfigRepository {
           id TEXT PRIMARY KEY,
           label TEXT NOT NULL,
           icon TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS rooms (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          department TEXT NOT NULL,
+          capacity INTEGER DEFAULT 1,
+          status TEXT DEFAULT 'available',
+          notes TEXT DEFAULT ''
         );
       `);
 
@@ -41,6 +49,18 @@ export class SQLiteConfigRepository implements ConfigRepository {
           await this.db.runAsync(
             'INSERT OR IGNORE INTO shifts (id, label, icon) VALUES (?, ?, ?)',
             [shift.id, shift.label, shift.icon]
+          );
+        }
+      }
+
+      const existingRooms = await this.db.getAllAsync<RoomConfig>(
+        'SELECT * FROM rooms'
+      );
+      if (existingRooms.length === 0) {
+        for (const room of APP_CONFIG.defaultRooms) {
+          await this.db.runAsync(
+            'INSERT OR IGNORE INTO rooms (id, name, department, capacity, status, notes) VALUES (?, ?, ?, ?, ?, ?)',
+            [room.id, room.name, room.department, room.capacity, room.status, room.notes || '']
           );
         }
       }
@@ -91,5 +111,40 @@ export class SQLiteConfigRepository implements ConfigRepository {
     const db = await this.getDatabase();
     await db.runAsync('DELETE FROM shifts WHERE id = ?', [id]);
     return this.getShifts();
+  }
+
+  async getRooms(department?: string): Promise<RoomConfig[]> {
+    const db = await this.getDatabase();
+    if (department && department !== 'Todas') {
+      return db.getAllAsync<RoomConfig>(
+        'SELECT * FROM rooms WHERE department = ? ORDER BY name ASC',
+        [department]
+      );
+    }
+    return db.getAllAsync<RoomConfig>('SELECT * FROM rooms ORDER BY department ASC, name ASC');
+  }
+
+  async addRoom(room: RoomConfig): Promise<RoomConfig[]> {
+    const db = await this.getDatabase();
+    await db.runAsync(
+      'INSERT OR REPLACE INTO rooms (id, name, department, capacity, status, notes) VALUES (?, ?, ?, ?, ?, ?)',
+      [room.id, room.name, room.department, room.capacity, room.status, room.notes || '']
+    );
+    return this.getRooms();
+  }
+
+  async updateRoom(room: RoomConfig): Promise<RoomConfig[]> {
+    const db = await this.getDatabase();
+    await db.runAsync(
+      'UPDATE rooms SET name = ?, department = ?, capacity = ?, status = ?, notes = ? WHERE id = ?',
+      [room.name, room.department, room.capacity, room.status, room.notes || '', room.id]
+    );
+    return this.getRooms();
+  }
+
+  async removeRoom(id: string): Promise<RoomConfig[]> {
+    const db = await this.getDatabase();
+    await db.runAsync('DELETE FROM rooms WHERE id = ?', [id]);
+    return this.getRooms();
   }
 }
