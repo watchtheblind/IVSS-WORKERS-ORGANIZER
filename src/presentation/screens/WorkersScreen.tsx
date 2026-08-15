@@ -154,7 +154,7 @@ export default function WorkersScreen() {
         <View>
           <Text style={styles.screenTitle}>Gestión de Personal</Text>
           <Text style={styles.screenSubtitle}>
-            {workers.length} trabajadores registrados en IVSS
+            {workers.length} trabajadores registrados
           </Text>
         </View>
         <View style={styles.networkIndicator}>
@@ -228,7 +228,7 @@ export default function WorkersScreen() {
             ) : (
               <>
                 <MaterialCommunityIcons name="plus" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.primaryButtonText}>Guardar en SQLite</Text>
+                <Text style={styles.primaryButtonText}>Guardar Trabajador</Text>
               </>
             )}
           </TouchableOpacity>

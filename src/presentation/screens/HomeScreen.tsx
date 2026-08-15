@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, StatusBar, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedTabBar, TabItem } from '../components/AnimatedTabBar';
+import { APP_CONFIG } from '../../domain/constants/appConfig';
 import PlanningScreen from './PlanningScreen';
 import WorkersScreen from './WorkersScreen';
 import SettingsScreen from './SettingsScreen';
@@ -23,7 +24,7 @@ const TABS: TabItem[] = [
   },
   {
     key: 'settings',
-    label: 'Configuraciones',
+    label: 'Configuración',
     icon: 'cog-outline',
     activeColor: '#A78BFA',
     activeBgColor: 'rgba(167, 139, 250, 0.15)',
@@ -61,13 +62,13 @@ export default function HomeScreen() {
       <View style={[styles.appHeader, { paddingTop: Math.max(insets.top, 16) + 8 }]}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.appBrand}>IVSS ORGANIZER</Text>
+            <Text style={styles.appBrand}>{APP_CONFIG.appName.toUpperCase()}</Text>
             <Text style={styles.appDate}>
               {today.charAt(0).toUpperCase() + today.slice(1)}
             </Text>
           </View>
           <View style={styles.badgeIVSS}>
-            <Text style={styles.badgeIVSSText}>HOSPITALARIO</Text>
+            <Text style={styles.badgeIVSSText}>{APP_CONFIG.appBadge}</Text>
           </View>
         </View>
       </View>
