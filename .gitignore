@@ -44,6 +44,10 @@ yarn-error.log*
 dist/
 web-build/
 
+# Generated native projects (expo prebuild)
+android/
+ios/
+
 # Environment variables
 .env
 .env.local
