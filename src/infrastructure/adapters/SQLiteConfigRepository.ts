@@ -1,7 +1,13 @@
-import { ConfigRepository } from '../../domain/ports/ConfigRepository';
+import { ConfigRepository, HospitalSettings, DEFAULT_HOSPITAL_SETTINGS } from '../../domain/ports/ConfigRepository';
 import { APP_CONFIG, ShiftConfig, RoomConfig, RoomStaffingPosition } from '../../domain/constants/appConfig';
 import { getDatabase } from '../database';
 import type { SQLiteDatabase } from 'expo-sqlite';
+
+const SETTING_KEYS = {
+  hospitalName: 'hospital_name',
+  showLogo: 'hospital_show_logo',
+  logoUri: 'hospital_logo_uri',
+} as const;
 
 function parsePositions(raw: string | null): RoomStaffingPosition[] {
   if (!raw) return [];
@@ -187,5 +193,41 @@ export class SQLiteConfigRepository implements ConfigRepository {
     const db = await this.getDatabase();
     await db.runAsync('DELETE FROM rooms WHERE id = ?', [id]);
     return this.getRooms();
+  }
+
+  async getHospitalSettings(): Promise<HospitalSettings> {
+    const db = await this.getDatabase();
+    const rows = await db.getAllAsync<{ key: string; value: string }>(
+      'SELECT key, value FROM settings WHERE key IN (?, ?, ?)',
+      [SETTING_KEYS.hospitalName, SETTING_KEYS.showLogo, SETTING_KEYS.logoUri]
+    );
+    const map: Record<string, string> = {};
+    rows.forEach((r) => {
+      map[r.key] = r.value;
+    });
+    return {
+      hospitalName: map[SETTING_KEYS.hospitalName] ?? DEFAULT_HOSPITAL_SETTINGS.hospitalName,
+      showLogo:
+        map[SETTING_KEYS.showLogo] === undefined
+          ? DEFAULT_HOSPITAL_SETTINGS.showLogo
+          : map[SETTING_KEYS.showLogo] === '1',
+      logoUri:
+        map[SETTING_KEYS.logoUri] ?? DEFAULT_HOSPITAL_SETTINGS.logoUri,
+    };
+  }
+
+  async saveHospitalSettings(settings: HospitalSettings): Promise<void> {
+    const db = await this.getDatabase();
+    const entries: [string, string][] = [
+      [SETTING_KEYS.hospitalName, settings.hospitalName],
+      [SETTING_KEYS.showLogo, settings.showLogo ? '1' : '0'],
+      [SETTING_KEYS.logoUri, settings.logoUri ?? ''],
+    ];
+    for (const [key, value] of entries) {
+      await db.runAsync(
+        'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+        [key, value]
+      );
+    }
   }
 }

@@ -53,6 +53,10 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
           status TEXT DEFAULT 'available',
           notes TEXT DEFAULT ''
         );
+        CREATE TABLE IF NOT EXISTS settings (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL
+        );
       `);
       await migrateRooms(db);
       return db;

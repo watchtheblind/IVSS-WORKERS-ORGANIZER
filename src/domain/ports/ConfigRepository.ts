@@ -1,5 +1,17 @@
 import { ShiftConfig, RoomConfig } from '../constants/appConfig';
 
+export interface HospitalSettings {
+  hospitalName: string;
+  showLogo: boolean;
+  logoUri: string | null;
+}
+
+export const DEFAULT_HOSPITAL_SETTINGS: HospitalSettings = {
+  hospitalName: '',
+  showLogo: true,
+  logoUri: null,
+};
+
 export interface ConfigRepository {
   getDepartments(): Promise<string[]>;
   addDepartment(name: string): Promise<string[]>;
@@ -11,4 +23,6 @@ export interface ConfigRepository {
   addRoom(room: RoomConfig): Promise<RoomConfig[]>;
   updateRoom(room: RoomConfig): Promise<RoomConfig[]>;
   removeRoom(id: string): Promise<RoomConfig[]>;
+  getHospitalSettings(): Promise<HospitalSettings>;
+  saveHospitalSettings(settings: HospitalSettings): Promise<void>;
 }
