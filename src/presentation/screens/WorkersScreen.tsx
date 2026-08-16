@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -24,7 +24,6 @@ export default function WorkersScreen() {
   const [syncing, setSyncing] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
-  const reportRef = useRef<View>(null);
 
   const loadWorkers = useCallback(async () => {
     try {
@@ -91,19 +90,6 @@ export default function WorkersScreen() {
     }
   };
 
-  const handleGenerateReport = async () => {
-    if (!reportRef.current) {
-      Alert.alert('Error', 'La vista del reporte no está lista.');
-      return;
-    }
-
-    try {
-      await container.generateReportImageUseCase.execute(reportRef);
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo generar o compartir la imagen del reporte.');
-      console.error('Report generation error:', error);
-    }
-  };
 
   const filteredWorkers = workers.filter(
     (w) =>
@@ -252,18 +238,11 @@ export default function WorkersScreen() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={handleGenerateReport}
-        >
-          <MaterialCommunityIcons name="camera-outline" size={18} color="#10B981" style={{ marginRight: 6 }} />
-          <Text style={styles.secondaryButtonText}>Exportar Reporte</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Worker List & Report Capture View */}
       <View style={styles.listSection}>
-        <View ref={reportRef} collapsable={false} style={styles.reportContainer}>
+        <View style={styles.reportContainer}>
           <FlatList
             data={filteredWorkers}
             keyExtractor={(item) => String(item.id)}
