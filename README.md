@@ -1,19 +1,25 @@
-# 📱 FaciTurno - Medical Shift & Personnel Organizer
+# 📱 FaciTurno — Medical Shift & Personnel Organizer
 
-**FaciTurno** is an **Offline-First** mobile application built with **React Native (Expo SDK 57)** and **TypeScript**, designed for hospital departments and healthcare facilities to manage medical personnel, shift planning, hospital rooms/beds, and automated cloud synchronization.
+**FaciTurno** is an **offline-first** mobile application built with **React Native (Expo SDK 57)** and **TypeScript**, designed for hospital departments and healthcare facilities to manage personnel, plan shifts, organize rooms/beds, and back everything up to the cloud automatically.
 
-The project is structured under **Hexagonal Architecture (Ports & Adapters)**, ensuring the business logic remains fully decoupled from the presentation layer, local storage (SQLite), cloud providers (Supabase), and external libraries.
+The codebase follows **Hexagonal Architecture (Ports & Adapters)**: business logic is decoupled from the UI, local storage (SQLite), cloud provider (Supabase), and external libraries.
+
+> Current release: **v1.0.0**
 
 ---
 
 ## ✨ Features
 
-- **📅 Shift & Schedule Planning**: Assign personnel to customizable departments, rooms, and shift schedules.
-- **👤 Personnel Management**: Register and manage workers with offline local storage and instant search.
-- **🛏️ Rooms & Beds Management (Salas)**: Dedicated room management with bed capacity, department grouping, status tracking (*Available*, *Occupied*, *Maintenance*), and notes.
-- **☁️ Offline-First & Cloud Sync**: Seamless local operations using SQLite with automatic and manual synchronization to Supabase.
-- **🧭 Animated Tab Navigation**: Gorhom-style fluid bubble tab bar with Material icons and safe area support.
-- **⚙️ Dynamic App Configuration**: Manage departments, shifts, and app settings directly within the app without code modifications.
+- **📅 Shift Planning** — Create a plan per **date** (calendar picker), **shift**, and **area/department**, assigning workers to each room.
+- **🖼️ Plan Export as Image** — The saved plan renders into a branded template (institute **name + logo**) that you share/export as a PNG with a timestamped filename.
+- **🚨 Pending Support Detection** — Rooms without full staff are flagged; external support can be added as *"Se Buscará Apoyo"* (shown in red in the template).
+- **👥 Personnel Management** — Register workers with instant search; the add-worker picker includes its own searchable list.
+- **🛏️ Rooms & Beds** — Room management with staffing by *total count* or *by position*, status tracking (*Available / Occupied / Maintenance*), department grouping, and notes.
+- **⚙️ Dynamic Configuration** — Manage areas/departments and shifts from inside the app.
+- **🏥 Hospital Branding** — Set the hospital center name and upload its logo (used in the plan template).
+- **🎨 5 Color Themes** — *Default (dark)*, *Matcha Cream*, *Matcha Deep*, *Strawberry Milk*, and *Warm Oatmeal*, persisted on the device.
+- **☁️ Offline-First Cloud Sync** — Everything runs on local SQLite; workers **and** configuration (areas, shifts, rooms, settings) sync to Supabase automatically or manually.
+- **🧭 Animated Tab Bar** — Fluid bubble tab navigation with safe-area support.
 
 ---
 
@@ -21,105 +27,97 @@ The project is structured under **Hexagonal Architecture (Ports & Adapters)**, e
 
 ### 1. Prerequisites
 
-- **Node.js**: v18 or later
-- **npm** or **yarn**
-- **Expo Go** app installed on your physical mobile device (iOS or Android), or an emulator/simulator.
-- A free **[Supabase](https://supabase.com)** account (for cloud backup & synchronization).
+- **Node.js** v18 or later
+- **npm**
+- A physical device or emulator for Android / iOS
+- A free **[Supabase](https://supabase.com)** account (cloud backup)
 
-### 2. Clone and Install Dependencies
+> [!IMPORTANT]
+> The app uses native modules (`react-native-view-shot`,
+> `@react-native-community/datetimepicker`) that are **not** available in
+> Expo Go. Build a development client instead (see *Running*).
+
+### 2. Clone and Install
 
 ```bash
-# Clone repository
-git clone https://github.com/your-username/faciturno.git
-cd faciturno
-
-# Install dependencies
+git clone https://github.com/watchtheblind/IVSS-WORKERS-ORGANIZER.git
+cd IVSS-WORKERS-ORGANIZER
 npm install
 ```
 
 ---
 
-## 🗄️ Supabase Cloud Setup Guide (Important)
+## 🗄️ Supabase Setup
 
-> [!IMPORTANT]
-> While local data (SQLite) is automatically initialized on the device, **Supabase PostgreSQL tables must be created manually once in your Supabase project**.
+Local data (SQLite) is initialized automatically; the Supabase tables must be created **once** manually.
 
-Follow these simple steps to configure your Supabase backend:
+1. Create a project at [supabase.com](https://supabase.com).
+2. Open **SQL Editor → New Query**, copy the contents of [`supabase/config_sync.sql`](supabase/config_sync.sql), paste, and **Run**.
 
-### Step 1: Create a Supabase Project
-1. Log in to [supabase.com](https://supabase.com) and click **"New Project"**.
-2. Give your project a name and choose a secure database password.
+This creates every table the app needs with public RLS access:
 
-### Step 2: Run the SQL Setup Script
-1. Navigate to the **SQL Editor** tab in your Supabase project dashboard.
-2. Click **"New Query"**, open [`supabase/setup_all.sql`](supabase/setup_all.sql),
-   copy its contents, paste them, and click **"Run"**.
+| Table           | Purpose                             |
+| --------------- | ----------------------------------- |
+| `workers`       | Trabajadores / personnel            |
+| `departments`   | Áreas y departamentos               |
+| `shifts`        | Turnos y horarios                   |
+| `rooms`         | Salas / rooms                       |
+| `app_settings`  | Hospital center name, logo flag, theme |
 
-This creates every table the app needs — `workers`, `departments`, `shifts`,
-`rooms` and `app_settings` — each with a public RLS policy allowing read/write
-via the anon key.
+3. Configure environment variables:
 
-> [!NOTE]
-> `supabase/config_sync.sql` is kept as a smaller, config-only script in case
-> you already created the `workers` table and only need the configuration
-> tables.
+```bash
+cp .env.example .env
+```
 
-### Step 3: Configure Environment Variables
-1. Copy the example environment file:
-   ```bash
-   cp .env.example .env
-   ```
-2. In your Supabase dashboard, go to **Project Settings ➡️ API** and copy your **Project URL** and **`anon` `public` key**.
-3. Edit your `.env` file:
-   ```env
-   EXPO_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
-   EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
-   ```
+Fill your **Project URL** and **`anon` `public` key** (Project Settings → API) in `.env`:
+
+```env
+EXPO_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+```
 
 ---
 
 ## 🏃 Running the Application
 
 ```bash
-# Start Expo development server
+# 1. Start the Metro bundler
 npm start
-# or: npx expo start
 
-# Run directly on Android
-npx expo start --android
-
-# Run directly on iOS (macOS required)
-npx expo start --ios
+# 2. In another terminal, build & run the development client
+npm run android        # or: npm run ios (macOS)
 ```
 
-Once running, scan the displayed QR code with the **Expo Go** app on your phone.
+You can also build a standalone release with **EAS Build**:
+
+```bash
+npx eas build --platform android --profile preview
+```
 
 ---
 
-## 🏛️ Hexagonal Architecture
-
-The architecture isolates the core domain from frameworks and UI:
+## 🏛️ Architecture
 
 ```
    ┌─────────────────────────────────────────────────────────┐
    │                  PRESENTATION LAYER                     │
-   │           (React Native Screens, Hooks, UI)             │
+   │        (Screens, Components, Theme, AnimatedTabBar)     │
    │                                                         │
    │   ┌─────────────────────────────────────────────────┐   │
    │   │              APPLICATION LAYER                  │   │
-   │   │             (Use Cases / Interactors)           │   │
+   │   │            (Use Cases / Interactors)            │   │
    │   │                                                 │   │
    │   │   ┌─────────────────────────────────────────┐   │   │
    │   │   │              DOMAIN LAYER               │   │   │
    │   │   │        (Entities, Ports & Rules)        │   │   │
-   │   │   │                                         │   │   │
    │   │   └─────────────────────────────────────────┘   │   │
    │   │                        ▲                        │   │
    │   └────────────────────────┼────────────────────────┘   │
    │                            │                            │
    │   ┌────────────────────────┴────────────────────────┐   │
    │   │             INFRASTRUCTURE LAYER                │   │
-   │   │    (SQLite, Supabase, ViewShot, Network, etc.)  │   │
+   │   │      (SQLite, Supabase, ViewShot, Network)      │   │
    │   └─────────────────────────────────────────────────┘   │
    └─────────────────────────────────────────────────────────┘
 ```
@@ -129,64 +127,66 @@ The architecture isolates the core domain from frameworks and UI:
 ```text
 src/
 ├── domain/                      # 🧠 DOMAIN: Pure business models & contracts
-│   ├── entities/                # Core domain entities (Worker, etc.)
-│   ├── constants/               # Centralized configuration (appConfig.ts)
-│   └── ports/                   # Interfaces / Ports (WorkerRepository, ConfigRepository, SyncService)
+│   ├── entities/                # Worker, etc.
+│   ├── constants/               # appConfig.ts (defaults)
+│   └── ports/                   # WorkerRepository, ConfigRepository, SyncService
 │
 ├── application/                 # ⚙️ APPLICATION: Use Cases
-│   └── use-cases/               # AddWorker, GetWorkers, SyncWorkers, etc.
+│   └── use-cases/               # AddWorker, GetWorkers, SyncWorkers, SyncConfig,
+│                                # GenerateReportImage, ...
 │
 ├── infrastructure/              # 🔌 INFRASTRUCTURE: External Adapters
-│   ├── adapters/                # SQLiteWorkerRepository, SQLiteConfigRepository, SupabaseSyncService
+│   ├── adapters/                # SQLite repositories, SupabaseSyncService,
+│   │                            # ViewShotImageService, ExpoShareService
 │   ├── config/                  # Supabase client setup
-│   └── network/                 # Network connectivity listener
+│   └── network/                 # Connectivity listener
 │
 ├── presentation/                # 🎨 PRESENTATION: User Interface
-│   ├── components/              # Reusable UI components (AnimatedTabBar)
-│   └── screens/                 # HomeScreen, PlanningScreen, WorkersScreen, RoomsScreen, SettingsScreen
+│   ├── components/              # AnimatedTabBar, ShiftTemplate
+│   ├── theme/                   # ThemeProvider (5 palettes)
+│   └── screens/                 # Home, Planning, Workers, Rooms, Settings
 │
-└── container.ts                 # 🪢 DEPENDENCY INJECTION: Connects adapters with use cases
+└── container.ts                 # 🪢 DI: wires adapters to use cases
 ```
 
 ---
 
-## 🔄 Offline-First Synchronization Workflow
+## 🔄 Offline-First Sync Workflow
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor User as Healthcare Supervisor
     participant UI as Mobile App (Presentation)
-    participant UC as SyncWorkers (Use Case)
+    participant UC as Sync Use Cases (Workers / Config)
     participant Net as NetworkListener (Infra)
     participant Local as SQLite (Local DB)
     participant Remote as Supabase (Cloud DB)
 
-    User->>UI: Registers worker or planning
-    UI->>Local: Saves locally (synced = 0)
+    User->>UI: Saves workers / config locally
+    UI->>Local: Persist (synced = 0)
     Net-->>UI: Internet connection detected
-    UI->>UC: Executes SyncWorkers
-    UC->>Local: Fetches unsynced records (synced = 0)
-    
+    UI->>UC: Execute sync (workers + config)
+    UC->>Local: Fetch unsynced records
     loop Push to Cloud
-        UC->>Remote: Upsert record to Supabase
-        Remote-->>UC: Return confirmation
-        UC->>Local: Updates status (synced = 1)
+        UC->>Remote: Upsert to Supabase
+        Remote-->>UC: Confirmation
+        UC->>Local: Mark synced = 1
     end
-
     loop Pull from Cloud
-        UC->>Remote: Fetch new records from Supabase
+        UC->>Remote: Fetch remote records
         UC->>Local: Upsert locally
     end
-    
-    UC-->>UI: Update UI status & notify user
+    UC-->>UI: Update UI status
 ```
+
+> [!NOTE]
+> Deletes are not propagated between devices (no soft-delete tombstones). The
+> hospital **logo** is a local file and is intentionally not uploaded.
 
 ---
 
-## 🧪 Type Checking & Quality
-
-To verify TypeScript types across the entire project:
+## 🧪 Type Checking
 
 ```bash
 npx tsc --noEmit
@@ -194,6 +194,14 @@ npx tsc --noEmit
 
 ---
 
+## 📦 Releases
+
+- **v1.0.0** — Initial release: shift planning with image export, personnel &
+  rooms management, hospital branding, 5 color themes, and offline-first sync
+  with Supabase.
+
+---
+
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](file:///home/luismonasterios/Escritorio/PROYECTOS/IVSS-WORKERS-ORGANIZER/LICENSE) file for details.
+MIT — see the [LICENSE](LICENSE) file.
