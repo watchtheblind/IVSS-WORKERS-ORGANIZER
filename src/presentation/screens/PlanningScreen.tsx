@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   View,
   Text,
@@ -8,11 +9,17 @@ import {
   StyleSheet,
   Alert,
   Modal,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { container } from '../../container';
 import { Worker } from '../../domain/entities/Worker';
 import { ShiftConfig, RoomConfig, APP_CONFIG } from '../../domain/constants/appConfig';
+import PlanningReport, {
+  PlanningReportData,
+  PlanningReportRoom,
+} from '../components/PlanningReport';
 
 interface RoomAssignment {
   workerIds: number[];
@@ -21,6 +28,9 @@ interface RoomAssignment {
 
 export default function PlanningScreen() {
   const [title, setTitle] = useState('');
+  const [planningDate, setPlanningDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const reportRef = useRef<View>(null);
   const [shifts, setShifts] = useState<ShiftConfig[]>(APP_CONFIG.defaultShifts);
   const [selectedShift, setSelectedShift] = useState<string>('morning');
   const [departments, setDepartments] = useState<string[]>(APP_CONFIG.defaultDepartments);
@@ -32,6 +42,8 @@ export default function PlanningScreen() {
   const [pickerRoomId, setPickerRoomId] = useState<string | null>(null);
   const [apoyoRoomId, setApoyoRoomId] = useState<string | null>(null);
   const [apoyoName, setApoyoName] = useState('');
+  const [savedReport, setSavedReport] = useState<PlanningReportData | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -92,7 +104,7 @@ export default function PlanningScreen() {
     const name = apoyoName.trim();
     if (!name) return;
     const current = getAssignment(roomId);
-    if (current.externalSupports.includes(name)) return;
+    if (name !== 'Por Buscar' && current.externalSupports.includes(name)) return;
     setAssignment(roomId, {
       ...current,
       externalSupports: [...current.externalSupports, name],
@@ -117,69 +129,137 @@ export default function PlanningScreen() {
     return `${count} ${count === 1 ? 'trabajador' : 'trabajadores'}`;
   };
 
+  const isRoomUnderstaffed = (room: RoomConfig): boolean => {
+    const assigned = getAssignment(room.id);
+    const totalAssigned =
+      assigned.workerIds.length + assigned.externalSupports.length;
+    if (room.staffingMode === 'total' && room.staffCount > 0) {
+      return totalAssigned < room.staffCount;
+    }
+    if (room.staffingMode === 'by_position') {
+      return (room.positions || []).some((req) => {
+        const assignedPos = workers
+          .filter((w) => assigned.workerIds.includes(w.id!))
+          .filter((w) => w.position === req.position).length;
+        return assignedPos < req.count;
+      });
+    }
+    return false;
+  };
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  const formatDateLabel = (date: Date) =>
+    date.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+
+  const formatTimestamp = (date: Date) =>
+    date.toLocaleString('es-VE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+  const buildReportData = (): PlanningReportData => {
+    const currentShiftLabel =
+      shifts.find((s) => s.id === selectedShift)?.label || selectedShift;
+    const uniqueWorkers = new Set<number>();
+    departmentRooms.forEach((room) => {
+      getAssignment(room.id).workerIds.forEach((id) => uniqueWorkers.add(id));
+    });
+
+    const rooms: PlanningReportRoom[] = departmentRooms.map((room) => {
+      const assigned = getAssignment(room.id);
+      const assignedWorkers = assigned.workerIds
+        .map((id) => workers.find((w) => w.id === id))
+        .filter((w): w is Worker => !!w)
+        .map((w) => ({ name: w.full_name, position: w.position }));
+      return {
+        name: room.name,
+        required: getStaffingLabel(room),
+        workers: assignedWorkers,
+        externalSupport: assigned.externalSupports,
+        complete: !isRoomUnderstaffed(room),
+      };
+    });
+
+    return {
+      appName: APP_CONFIG.appName,
+      title: title.trim(),
+      dateLabel: formatDateLabel(planningDate),
+      shiftLabel: currentShiftLabel,
+      department: selectedDept,
+      totalWorkers: uniqueWorkers.size,
+      rooms,
+      notes: notes.trim(),
+      generatedAtLabel: formatTimestamp(new Date()),
+    };
+  };
+
+  const handleExportImage = async () => {
+    if (!reportRef.current) {
+      Alert.alert('Error', 'La vista de la planificación no está lista.');
+      return;
+    }
+    setExporting(true);
+    try {
+      const now = new Date();
+      const fileStamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(
+        now.getDate()
+      )}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      await container.generateReportImageUseCase.execute(reportRef, {
+        fileName: `planificacion_${fileStamp}`,
+        dialogTitle: `Compartir Planificación - ${title.trim()}`,
+      });
+    } catch (error) {
+      Alert.alert(
+        'Error',
+        'No se pudo generar o compartir la imagen de la planificación.'
+      );
+      console.error('Planning export error:', error);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const closeReport = () => {
+    setSavedReport(null);
+    setTitle('');
+    setNotes('');
+    setAssignments({});
+  };
+
   const handleSavePlanning = () => {
     if (!title.trim()) {
       Alert.alert('Atención', 'Por favor ingresa un título para la planificación.');
       return;
     }
 
-    const understaffed = departmentRooms.filter((room) => {
-      const assigned = getAssignment(room.id);
-      const totalAssigned = assigned.workerIds.length + assigned.externalSupports.length;
-      if (room.staffingMode === 'total' && room.staffCount > 0) {
-        return totalAssigned < room.staffCount;
-      }
-      if (room.staffingMode === 'by_position') {
-        return (room.positions || []).some((req) => {
-          const assignedPos = workers
-            .filter((w) => assigned.workerIds.includes(w.id!))
-            .filter((w) => w.position === req.position).length;
-          return assignedPos < req.count;
-        });
-      }
-      return false;
-    });
+    const totalAssigned = departmentRooms.reduce(
+      (acc, room) => {
+        const assigned = getAssignment(room.id);
+        return acc + assigned.workerIds.length + assigned.externalSupports.length;
+      },
+      0
+    );
+    if (totalAssigned === 0) {
+      Alert.alert(
+        'Sin personal asignado',
+        'Asigna al menos un trabajador o apoyo externo para poder guardar la planificación.'
+      );
+      return;
+    }
 
-    const buildSummary = () => {
-      const currentShiftLabel =
-        shifts.find((s) => s.id === selectedShift)?.label || selectedShift;
-      const uniqueWorkers = new Set<number>();
-      departmentRooms.forEach((room) => {
-        getAssignment(room.id).workerIds.forEach((id) => uniqueWorkers.add(id));
-      });
-      
-      const roomLines = departmentRooms
-        .map((room) => {
-          const assigned = getAssignment(room.id);
-          const parts: string[] = [];
-          if (assigned.workerIds.length > 0) {
-            parts.push(`${assigned.workerIds.length} asignado(s)`);
-          }
-          if (assigned.externalSupports.length > 0) {
-            parts.push(`${assigned.externalSupports.length} apoyo externo`);
-          }
-          const req = getStaffingLabel(room);
-          const status = parts.length === 0 ? 'Sin personal' : parts.join(', ');
-          const incomplete =
-            understaffed.some((r) => r.id === room.id) ? ' ⚠' : '';
-          return `• ${room.name}: ${status} (requiere ${req})${incomplete}`;
-        })
-        .join('\n');
-
-      return `Guardia asignada con éxito:\n\n• Área: ${selectedDept}\n• Turno: ${currentShiftLabel}\n• Personal en turno: ${uniqueWorkers.size}\n\nSALAS:\n${roomLines}`;
-    };
+    const understaffed = departmentRooms.filter(isRoomUnderstaffed);
 
     const confirmSave = () => {
-      Alert.alert('¡Planificación Creada!', buildSummary(), [
-        {
-          text: 'Entendido',
-          onPress: () => {
-            setTitle('');
-            setNotes('');
-            setAssignments({});
-          },
-        },
-      ]);
+      setSavedReport(buildReportData());
     };
 
     if (understaffed.length > 0) {
@@ -224,6 +304,52 @@ export default function PlanningScreen() {
             value={title}
             onChangeText={setTitle}
           />
+        </View>
+
+        {/* Planning Date */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Fecha de la Planificación</Text>
+          <TouchableOpacity
+            style={styles.dateButton}
+            onPress={() => setShowDatePicker((prev) => !prev)}
+          >
+            <View style={styles.dateIconContainer}>
+              <MaterialCommunityIcons
+                name="calendar-month"
+                size={22}
+                color="#38BDF8"
+              />
+            </View>
+            <View style={styles.dateInfo}>
+              <Text style={styles.dateLabel}>
+                {formatDateLabel(planningDate)}
+              </Text>
+              <Text style={styles.dateHint}>
+                {planningDate.toDateString() === new Date().toDateString()
+                  ? 'Fecha actual · Toca para cambiar'
+                  : 'Toca para cambiar la fecha'}
+              </Text>
+            </View>
+            <MaterialCommunityIcons
+              name="chevron-down"
+              size={22}
+              color="#94A3B8"
+            />
+          </TouchableOpacity>
+          {showDatePicker && (
+            <DateTimePicker
+              value={planningDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'inline' : 'default'}
+              onValueChange={(_event, date) => {
+                setPlanningDate(date);
+                if (Platform.OS !== 'ios') {
+                  setShowDatePicker(false);
+                }
+              }}
+              onDismiss={() => setShowDatePicker(false)}
+            />
+          )}
         </View>
 
         {/* Department Selector */}
@@ -362,8 +488,8 @@ export default function PlanningScreen() {
                             </View>
                           );
                         })}
-                        {assignment.externalSupports.map((name) => (
-                          <View key={name} style={styles.assignedRow}>
+                        {assignment.externalSupports.map((name, index) => (
+                          <View key={`${name}-${index}`} style={styles.assignedRow}>
                             <MaterialCommunityIcons
                               name="account-plus-outline"
                               size={18}
@@ -539,6 +665,59 @@ export default function PlanningScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Report Preview Modal */}
+      <Modal
+        visible={!!savedReport}
+        transparent
+        animationType="fade"
+        onRequestClose={closeReport}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.reportModalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Planificación Guardada</Text>
+              <TouchableOpacity onPress={closeReport}>
+                <MaterialCommunityIcons name="close" size={22} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              style={styles.reportScroll}
+              contentContainerStyle={styles.reportScrollContent}
+            >
+              {savedReport && <PlanningReport data={savedReport} />}
+            </ScrollView>
+            <TouchableOpacity
+              style={[styles.exportButton, exporting && styles.buttonDisabled]}
+              onPress={handleExportImage}
+              disabled={exporting}
+            >
+              {exporting ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <>
+                  <MaterialCommunityIcons
+                    name="image-plus"
+                    size={20}
+                    color="#FFFFFF"
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text style={styles.exportButtonText}>Compartir Imagen</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Off-screen capture target */}
+      {savedReport && (
+        <View style={styles.offscreenCapture}>
+          <View ref={reportRef} collapsable={false}>
+            <PlanningReport data={savedReport} />
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -891,5 +1070,77 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#94A3B8',
     marginTop: 1,
+  },
+  /* Date Picker */
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+    gap: 12,
+  },
+  dateIconContainer: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateInfo: {
+    flex: 1,
+  },
+  dateLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F8FAFC',
+    textTransform: 'capitalize',
+  },
+  dateHint: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  /* Report Modal */
+  reportModalContainer: {
+    backgroundColor: '#1E293B',
+    borderRadius: 18,
+    width: '100%',
+    maxHeight: '85%',
+    borderWidth: 1,
+    borderColor: '#334155',
+    padding: 20,
+  },
+  reportScroll: {
+    flexGrow: 0,
+  },
+  reportScrollContent: {
+    paddingBottom: 4,
+  },
+  exportButton: {
+    backgroundColor: '#0284C7',
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+  },
+  exportButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  offscreenCapture: {
+    position: 'absolute',
+    left: -99999,
+    top: 0,
+    width: 360,
   },
 });
