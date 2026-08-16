@@ -17,11 +17,24 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.ivss.faciturno"
+      "package": "com.ivss.faciturno",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-sqlite", "expo-sharing", "expo-image-picker"]
+    "plugins": [
+      "expo-sqlite",
+      "expo-sharing",
+      "expo-image-picker"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "f38dcfe3-1267-4486-af24-a776d6036a00"
+      }
+    },
+    "owner": "watchtheblind"
   }
 }
