@@ -25,4 +25,6 @@ export interface ConfigRepository {
   removeRoom(id: string): Promise<RoomConfig[]>;
   getHospitalSettings(): Promise<HospitalSettings>;
   saveHospitalSettings(settings: HospitalSettings): Promise<void>;
+  getSetting(key: string): Promise<string | null>;
+  setSetting(key: string, value: string): Promise<void>;
 }

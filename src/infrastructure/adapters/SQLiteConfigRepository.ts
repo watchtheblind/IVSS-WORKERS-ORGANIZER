@@ -230,4 +230,21 @@ export class SQLiteConfigRepository implements ConfigRepository {
       );
     }
   }
+
+  async getSetting(key: string): Promise<string | null> {
+    const db = await this.getDatabase();
+    const row = await db.getFirstAsync<{ value: string }>(
+      'SELECT value FROM settings WHERE key = ?',
+      [key]
+    );
+    return row ? row.value : null;
+  }
+
+  async setSetting(key: string, value: string): Promise<void> {
+    const db = await this.getDatabase();
+    await db.runAsync(
+      'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+      [key, value]
+    );
+  }
 }
