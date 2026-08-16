@@ -28,7 +28,6 @@ export default function PlanningScreen() {
   const [rooms, setRooms] = useState<RoomConfig[]>([]);
   const [notes, setNotes] = useState('');
   const [workers, setWorkers] = useState<Worker[]>([]);
-  const [selectedWorkers, setSelectedWorkers] = useState<number[]>([]);
   const [assignments, setAssignments] = useState<Record<string, RoomAssignment>>({});
   const [pickerRoomId, setPickerRoomId] = useState<string | null>(null);
   const [apoyoRoomId, setApoyoRoomId] = useState<string | null>(null);
@@ -65,13 +64,6 @@ export default function PlanningScreen() {
 
   const departmentRooms = rooms.filter((r) => r.department === selectedDept);
 
-  const toggleWorker = (id: number) => {
-    if (selectedWorkers.includes(id)) {
-      setSelectedWorkers(selectedWorkers.filter((wId) => wId !== id));
-    } else {
-      setSelectedWorkers([...selectedWorkers, id]);
-    }
-  };
 
   const getAssignment = (roomId: string): RoomAssignment =>
     assignments[roomId] || { workerIds: [], externalSupports: [] };
@@ -130,10 +122,6 @@ export default function PlanningScreen() {
       Alert.alert('Atención', 'Por favor ingresa un título para la planificación.');
       return;
     }
-    if (selectedWorkers.length === 0) {
-      Alert.alert('Atención', 'Por favor selecciona al menos un trabajador para la guardia.');
-      return;
-    }
 
     const understaffed = departmentRooms.filter((room) => {
       const assigned = getAssignment(room.id);
@@ -155,6 +143,11 @@ export default function PlanningScreen() {
     const buildSummary = () => {
       const currentShiftLabel =
         shifts.find((s) => s.id === selectedShift)?.label || selectedShift;
+      const uniqueWorkers = new Set<number>();
+      departmentRooms.forEach((room) => {
+        getAssignment(room.id).workerIds.forEach((id) => uniqueWorkers.add(id));
+      });
+      
       const roomLines = departmentRooms
         .map((room) => {
           const assigned = getAssignment(room.id);
@@ -173,7 +166,7 @@ export default function PlanningScreen() {
         })
         .join('\n');
 
-      return `Guardia asignada con éxito:\n\n• Área: ${selectedDept}\n• Turno: ${currentShiftLabel}\n• Personal en turno: ${selectedWorkers.length}\n\nSALAS:\n${roomLines}`;
+      return `Guardia asignada con éxito:\n\n• Área: ${selectedDept}\n• Turno: ${currentShiftLabel}\n• Personal en turno: ${uniqueWorkers.size}\n\nSALAS:\n${roomLines}`;
     };
 
     const confirmSave = () => {
@@ -183,7 +176,6 @@ export default function PlanningScreen() {
           onPress: () => {
             setTitle('');
             setNotes('');
-            setSelectedWorkers([]);
             setAssignments({});
           },
         },
@@ -297,55 +289,6 @@ export default function PlanningScreen() {
           </View>
         </View>
 
-        {/* Worker Selector */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Asignar Personal</Text>
-            <Text style={styles.selectedCountBadge}>
-              {selectedWorkers.length} seleccionados
-            </Text>
-          </View>
-          {workers.length === 0 ? (
-            <Text style={styles.emptyNotice}>
-              No hay trabajadores registrados aún. Ve a la pestaña
-              de Trabajadores para añadirlos.
-            </Text>
-          ) : (
-            <View style={styles.workerListContainer}>
-              {workers.map((worker) => {
-                const isSelected = selectedWorkers.includes(worker.id!);
-                return (
-                  <TouchableOpacity
-                    key={worker.id}
-                    style={[
-                      styles.workerSelectCard,
-                      isSelected && styles.workerSelectCardActive,
-                    ]}
-                    onPress={() => toggleWorker(worker.id!)}
-                  >
-                    <View style={styles.workerSelectInfo}>
-                      <Text style={styles.workerSelectName}>
-                        {worker.full_name}
-                      </Text>
-                      <Text style={styles.workerSelectPosition}>
-                        {worker.position}
-                      </Text>
-                    </View>
-                    <MaterialCommunityIcons
-                      name={
-                        isSelected
-                          ? 'checkbox-marked-circle'
-                          : 'checkbox-blank-circle-outline'
-                      }
-                      size={24}
-                      color={isSelected ? '#10B981' : '#64748B'}
-                    />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
-        </View>
 
         {/* Room Assignment Form */}
         <View style={styles.section}>
@@ -466,7 +409,7 @@ export default function PlanningScreen() {
                         style={styles.roomActionBtn}
                         onPress={() => {
                           setApoyoRoomId(room.id);
-                          setApoyoName('');
+                          setApoyoName('Por Buscar');
                         }}
                       >
                         <MaterialCommunityIcons
@@ -492,7 +435,7 @@ export default function PlanningScreen() {
                           onPress={() => addExternalSupport(room.id)}
                         >
                           <MaterialCommunityIcons
-                            name="plus"
+                            name="check"
                             size={20}
                             color="#FFFFFF"
                           />

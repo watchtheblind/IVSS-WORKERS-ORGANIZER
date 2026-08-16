@@ -62,7 +62,7 @@ export default function SettingsScreen() {
   const handleRemoveDepartment = (dept: string) => {
     Alert.alert(
       'Eliminar Área',
-      `¿Estás seguro de eliminar el área "${dept}"?`,
+      `¿Estás seguro de eliminar el área "${dept}"? Las salas que le pertenecen también serán eliminadas.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {

@@ -103,6 +103,7 @@ export class SQLiteConfigRepository implements ConfigRepository {
 
   async removeDepartment(name: string): Promise<string[]> {
     const db = await this.getDatabase();
+    await db.runAsync('DELETE FROM rooms WHERE department = ?', [name]);
     await db.runAsync('DELETE FROM departments WHERE name = ?', [name]);
     return this.getDepartments();
   }
