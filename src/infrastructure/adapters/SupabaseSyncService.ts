@@ -38,6 +38,16 @@ export class SupabaseSyncService implements SyncService {
     return (data || []) as RemoteWorker[];
   }
 
+  async deleteWorker(supabaseId: string): Promise<void> {
+    const { error } = await supabase
+      .from('workers')
+      .delete()
+      .eq('id', Number(supabaseId));
+    if (error) {
+      throw new Error(`Supabase delete failed: ${error.message}`);
+    }
+  }
+
   async pushDepartments(names: string[]): Promise<void> {
     if (names.length === 0) return;
     const { error } = await supabase

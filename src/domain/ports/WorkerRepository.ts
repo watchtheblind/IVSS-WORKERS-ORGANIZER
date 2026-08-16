@@ -6,4 +6,5 @@ export interface WorkerRepository {
   getUnsyncedWorkers(): Promise<Worker[]>;
   updateWorkerSyncStatus(id: number, supabaseId: string): Promise<void>;
   upsertWorkerBySupabaseId(worker: Omit<Worker, 'id' | 'synced'>): Promise<void>;
+  removeWorker(id: number): Promise<void>;
 }

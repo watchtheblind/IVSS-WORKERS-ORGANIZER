@@ -57,4 +57,9 @@ export class SQLiteWorkerRepository implements WorkerRepository {
       [worker.supabase_id, worker.full_name, worker.position]
     );
   }
+
+  async removeWorker(id: number): Promise<void> {
+    const db = await this.getDatabase();
+    await db.runAsync('DELETE FROM workers WHERE id = ?', [id]);
+  }
 }

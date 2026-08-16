@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,122 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Animated,
+  PanResponder,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { container } from '../../container';
 import { Worker } from '../../domain/entities/Worker';
 import { useAppTheme, ThemeColors } from '../theme/ThemeProvider';
+
+const DELETE_ACTION_WIDTH = 88;
+
+interface SwipeableWorkerRowProps {
+  item: Worker;
+  isOpen: boolean;
+  onOpen: () => void;
+  onDelete: () => void;
+}
+
+const SwipeableWorkerRow: React.FC<SwipeableWorkerRowProps> = ({
+  item,
+  isOpen,
+  onOpen,
+  onDelete,
+}) => {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const translateX = useRef(new Animated.Value(0)).current;
+  const isOpenRef = useRef(false);
+
+  const settle = useCallback((open: boolean) => {
+    isOpenRef.current = open;
+    Animated.spring(translateX, {
+      toValue: open ? -DELETE_ACTION_WIDTH : 0,
+      tension: 60,
+      friction: 9,
+      useNativeDriver: true,
+    }).start();
+  }, [translateX]);
+
+  useEffect(() => {
+    if (!isOpen && isOpenRef.current) {
+      settle(false);
+    }
+  }, [isOpen, settle]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_evt, g) =>
+        Math.abs(g.dx) > 12 && Math.abs(g.dx) > Math.abs(g.dy),
+      onPanResponderMove: (_evt, g) => {
+        if (isOpenRef.current && g.dx > 0) {
+          translateX.setValue(Math.min(0, g.dx));
+        } else if (g.dx < 0) {
+          translateX.setValue(Math.max(-DELETE_ACTION_WIDTH, g.dx));
+        }
+      },
+      onPanResponderRelease: (_evt, g) => {
+        if (g.dx < -DELETE_ACTION_WIDTH / 2) {
+          onOpen();
+          settle(true);
+        } else {
+          settle(false);
+        }
+      },
+      onPanResponderTerminate: () => settle(isOpenRef.current),
+    })
+  ).current;
+
+  return (
+    <View style={styles.swipeWrapper}>
+      <View style={[styles.deleteAction, { backgroundColor: colors.danger }]}>
+        <TouchableOpacity
+          style={styles.deleteActionInner}
+          activeOpacity={0.7}
+          onPress={onDelete}
+        >
+          <MaterialCommunityIcons name="trash-can-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.deleteActionText}>Borrar</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Animated.View
+        style={[styles.workerCard, { transform: [{ translateX }] }]}
+        {...panResponder.panHandlers}
+      >
+        <View style={styles.workerAvatar}>
+          <MaterialCommunityIcons name="account" size={24} color={colors.accent} />
+        </View>
+        <View style={styles.workerInfo}>
+          <Text style={styles.workerName}>{item.full_name}</Text>
+          <Text style={styles.workerPosition}>{item.position}</Text>
+        </View>
+        <View
+          style={[
+            styles.syncBadge,
+            { backgroundColor: item.synced ? colors.successTint : colors.warningTint },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name={item.synced ? 'cloud-check' : 'cloud-sync'}
+            size={14}
+            color={item.synced ? colors.success : colors.warning}
+            style={{ marginRight: 4 }}
+          />
+          <Text
+            style={[
+              styles.syncBadgeText,
+              { color: item.synced ? colors.success : colors.warning },
+            ]}
+          >
+            {item.synced ? 'Sincronizado' : 'Pendiente'}
+          </Text>
+        </View>
+      </Animated.View>
+    </View>
+  );
+};
 
 export default function WorkersScreen() {
   const { colors } = useAppTheme();
@@ -27,6 +138,7 @@ export default function WorkersScreen() {
   const [syncing, setSyncing] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [openWorkerId, setOpenWorkerId] = useState<number | null>(null);
 
   const loadWorkers = useCallback(async () => {
     try {
@@ -104,37 +216,37 @@ export default function WorkersScreen() {
       w.position.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleDeleteWorker = (worker: Worker) => {
+    Alert.alert(
+      'Eliminar Trabajador',
+      `¿Estás seguro de eliminar a "${worker.full_name}"?\nEsta acción no se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await container.removeWorkerUseCase.execute(worker);
+              setOpenWorkerId(null);
+              await loadWorkers();
+            } catch (error) {
+              Alert.alert('Error', 'No se pudo eliminar el trabajador.');
+              console.error('Error removing worker:', error);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderWorkerItem = ({ item }: { item: Worker }) => (
-    <View style={styles.workerCard}>
-      <View style={styles.workerAvatar}>
-        <MaterialCommunityIcons name="account" size={24} color={colors.accent} />
-      </View>
-      <View style={styles.workerInfo}>
-        <Text style={styles.workerName}>{item.full_name}</Text>
-        <Text style={styles.workerPosition}>{item.position}</Text>
-      </View>
-      <View
-        style={[
-          styles.syncBadge,
-          { backgroundColor: item.synced ? colors.successTint : colors.warningTint },
-        ]}
-      >
-        <MaterialCommunityIcons
-          name={item.synced ? 'cloud-check' : 'cloud-sync'}
-          size={14}
-          color={item.synced ? colors.success : colors.warning}
-          style={{ marginRight: 4 }}
-        />
-        <Text
-          style={[
-            styles.syncBadgeText,
-            { color: item.synced ? colors.success : colors.warning },
-          ]}
-        >
-          {item.synced ? 'Sincronizado' : 'Pendiente'}
-        </Text>
-      </View>
-    </View>
+    <SwipeableWorkerRow
+      item={item}
+      isOpen={openWorkerId === item.id}
+      onOpen={() => setOpenWorkerId(item.id ?? null)}
+      onDelete={() => handleDeleteWorker(item)}
+    />
   );
 
   return (
@@ -422,11 +534,37 @@ const createStyles = (colors: ThemeColors) =>
     flex: 1,
     backgroundColor: colors.background,
   },
+  swipeWrapper: {
+    marginBottom: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  deleteAction: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    right: 0,
+    width: DELETE_ACTION_WIDTH,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteActionInner: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  deleteActionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   workerCard: {
     backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 14,
-    marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,

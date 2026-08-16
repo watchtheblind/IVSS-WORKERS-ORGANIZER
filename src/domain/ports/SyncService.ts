@@ -11,6 +11,7 @@ export interface RemoteWorker {
 export interface SyncService {
   pushWorker(worker: Worker): Promise<RemoteWorker>;
   pullWorkers(): Promise<RemoteWorker[]>;
+  deleteWorker(supabaseId: string): Promise<void>;
   pushDepartments(names: string[]): Promise<void>;
   pullDepartments(): Promise<string[]>;
   pushShifts(shifts: ShiftConfig[]): Promise<void>;
