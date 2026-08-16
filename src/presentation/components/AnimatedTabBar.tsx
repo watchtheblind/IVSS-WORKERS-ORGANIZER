@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppTheme, ThemeColors } from '../theme/ThemeProvider';
 
 export interface TabItem {
   key: string;
@@ -29,9 +30,17 @@ interface TabButtonProps {
   index: number;
   isSelected: boolean;
   onPress: () => void;
+  inactiveColor: string;
 }
 
-const TabButton: React.FC<TabButtonProps> = ({ item, isSelected, onPress }) => {
+const TabButton: React.FC<TabButtonProps> = ({
+  item,
+  isSelected,
+  onPress,
+  inactiveColor,
+}) => {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const animatedValue = useRef(new Animated.Value(isSelected ? 1 : 0)).current;
 
   useEffect(() => {
@@ -86,7 +95,7 @@ const TabButton: React.FC<TabButtonProps> = ({ item, isSelected, onPress }) => {
             <MaterialCommunityIcons
               name={item.icon}
               size={24}
-              color={isSelected ? item.activeColor : '#64748B'}
+              color={isSelected ? item.activeColor : inactiveColor}
             />
           </Animated.View>
 
@@ -118,7 +127,9 @@ export const AnimatedTabBar: React.FC<AnimatedTabBarProps> = ({
   onTabPress,
 }) => {
   const insets = useSafeAreaInsets();
+  const { colors } = useAppTheme();
   const bottomPadding = Math.max(insets.bottom, 12);
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <View style={[styles.container, { paddingBottom: bottomPadding }]}>
@@ -130,6 +141,7 @@ export const AnimatedTabBar: React.FC<AnimatedTabBarProps> = ({
             index={index}
             isSelected={selectedIndex === index}
             onPress={() => onTabPress(index)}
+            inactiveColor={colors.textFaint}
           />
         ))}
       </View>
@@ -137,57 +149,58 @@ export const AnimatedTabBar: React.FC<AnimatedTabBarProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#0B1120',
-    borderTopWidth: 1,
-    borderTopColor: '#1E293B',
-    paddingTop: 10,
-    paddingHorizontal: 16,
-  },
-  tabBarInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#1E293B',
-    borderRadius: 24,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-  tabButtonWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  touchable: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bubbleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 9,
-    paddingHorizontal: 10,
-    borderRadius: 20,
-    minHeight: 44,
-  },
-  tabLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.1,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      backgroundColor: colors.header,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: 10,
+      paddingHorizontal: 16,
+    },
+    tabBarInner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.surface,
+      borderRadius: 24,
+      paddingVertical: 6,
+      paddingHorizontal: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 8,
+        },
+        android: {
+          elevation: 8,
+        },
+      }),
+    },
+    tabButtonWrapper: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    touchable: {
+      width: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    bubbleContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 9,
+      paddingHorizontal: 10,
+      borderRadius: 20,
+      minHeight: 44,
+    },
+    tabLabel: {
+      fontSize: 12,
+      fontWeight: '700',
+      letterSpacing: 0.1,
+    },
+  });

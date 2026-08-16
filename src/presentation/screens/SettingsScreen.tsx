@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,8 +19,17 @@ import {
   HospitalSettings,
   DEFAULT_HOSPITAL_SETTINGS,
 } from '../../domain/ports/ConfigRepository';
+import {
+  useAppTheme,
+  THEMES,
+  ThemeColors,
+  ThemeName,
+} from '../theme/ThemeProvider';
 
 export default function SettingsScreen() {
+  const { colors, themeName, setThemeName } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [autoSync, setAutoSync] = useState(true);
   const [hospitalSettings, setHospitalSettings] = useState<HospitalSettings>(
     DEFAULT_HOSPITAL_SETTINGS
@@ -211,18 +220,63 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleSelectTheme = (name: ThemeName) => {
+    setThemeName(name);
+  };
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Header Banner */}
       <View style={styles.headerBanner}>
         <View style={styles.headerIconContainer}>
-          <MaterialCommunityIcons name="cog" size={28} color="#A78BFA" />
+          <MaterialCommunityIcons name="cog" size={28} color={colors.purple} />
         </View>
         <View style={styles.headerTextContainer}>
           <Text style={styles.headerTitle}>Configuraciones</Text>
           <Text style={styles.headerSubtitle}>
             Gestión de áreas, turnos y preferencias de {APP_CONFIG.appName}
           </Text>
+        </View>
+      </View>
+
+      {/* Appearance & Theme */}
+      <View style={styles.section}>
+        <Text style={styles.sectionHeader}>APARIENCIA Y TEMA</Text>
+        <View style={styles.card}>
+          {THEMES.map((theme, index) => {
+            const selected = theme.name === themeName;
+            return (
+              <React.Fragment key={theme.name}>
+                {index > 0 && <View style={styles.divider} />}
+                <TouchableOpacity
+                  style={styles.themeRow}
+                  onPress={() => handleSelectTheme(theme.name)}
+                >
+                  <View style={styles.themeLeft}>
+                    <View
+                      style={[
+                        styles.themeSwatch,
+                        { backgroundColor: theme.colors.background },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.themeSwatchInner,
+                          { backgroundColor: theme.colors.accent },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.themeLabel}>{theme.label}</Text>
+                  </View>
+                  <MaterialCommunityIcons
+                    name={selected ? 'check-circle' : 'circle-outline'}
+                    size={22}
+                    color={selected ? colors.accent : colors.textFaint}
+                  />
+                </TouchableOpacity>
+              </React.Fragment>
+            );
+          })}
         </View>
       </View>
 
@@ -237,7 +291,7 @@ export default function SettingsScreen() {
             <MaterialCommunityIcons
               name={showAddDept ? 'close' : 'plus'}
               size={16}
-              color="#38BDF8"
+              color={colors.accent}
             />
             <Text style={styles.addButtonText}>
               {showAddDept ? 'Cerrar' : 'Añadir'}
@@ -250,7 +304,7 @@ export default function SettingsScreen() {
             <TextInput
               style={styles.input}
               placeholder="Nombre del área (Ej. Traumatología)"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.textMuted}
               value={newDeptName}
               onChangeText={setNewDeptName}
             />
@@ -266,11 +320,11 @@ export default function SettingsScreen() {
               {index > 0 && <View style={styles.divider} />}
               <View style={styles.itemRow}>
                 <View style={styles.itemLeft}>
-                  <MaterialCommunityIcons name="domain" size={20} color="#38BDF8" />
+                  <MaterialCommunityIcons name="domain" size={20} color={colors.accent} />
                   <Text style={styles.itemText}>{dept}</Text>
                 </View>
                 <TouchableOpacity onPress={() => handleRemoveDepartment(dept)}>
-                  <MaterialCommunityIcons name="trash-can-outline" size={20} color="#EF4444" />
+                  <MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.danger} />
                 </TouchableOpacity>
               </View>
             </React.Fragment>
@@ -289,7 +343,7 @@ export default function SettingsScreen() {
             <MaterialCommunityIcons
               name={showAddShift ? 'close' : 'plus'}
               size={16}
-              color="#38BDF8"
+              color={colors.accent}
             />
             <Text style={styles.addButtonText}>
               {showAddShift ? 'Cerrar' : 'Añadir'}
@@ -302,7 +356,7 @@ export default function SettingsScreen() {
             <TextInput
               style={styles.input}
               placeholder="Descripción del turno (Ej. Guardia Especial)"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.textMuted}
               value={newShiftLabel}
               onChangeText={setNewShiftLabel}
             />
@@ -321,12 +375,12 @@ export default function SettingsScreen() {
                   <MaterialCommunityIcons
                     name={(shift.icon || 'clock-outline') as any}
                     size={20}
-                    color="#A78BFA"
+                    color={colors.purple}
                   />
                   <Text style={styles.itemText}>{shift.label}</Text>
                 </View>
                 <TouchableOpacity onPress={() => handleRemoveShift(shift)}>
-                  <MaterialCommunityIcons name="trash-can-outline" size={20} color="#EF4444" />
+                  <MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.danger} />
                 </TouchableOpacity>
               </View>
             </React.Fragment>
@@ -348,8 +402,8 @@ export default function SettingsScreen() {
             <Switch
               value={autoSync}
               onValueChange={setAutoSync}
-              trackColor={{ false: '#334155', true: '#6366F1' }}
-              thumbColor={autoSync ? '#FFFFFF' : '#94A3B8'}
+              trackColor={{ false: colors.border, true: colors.accent }}
+              thumbColor={autoSync ? '#FFFFFF' : colors.textMuted}
             />
           </View>
 
@@ -357,10 +411,10 @@ export default function SettingsScreen() {
 
           <TouchableOpacity style={styles.actionRow} onPress={handleManualSync}>
             <View style={styles.actionLeft}>
-              <MaterialCommunityIcons name="cloud-sync" size={22} color="#38BDF8" />
+              <MaterialCommunityIcons name="cloud-sync" size={22} color={colors.accent} />
               <Text style={styles.actionText}>Sincronizar Datos Ahora</Text>
             </View>
-            <MaterialCommunityIcons name="chevron-right" size={20} color="#64748B" />
+            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textFaint} />
           </TouchableOpacity>
         </View>
       </View>
@@ -382,7 +436,7 @@ export default function SettingsScreen() {
             <TextInput
               style={styles.input}
               placeholder="Ej. Hospital Central de Valencia"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.textMuted}
               value={hospitalSettings.hospitalName}
               onChangeText={(text) =>
                 setHospitalSettings((prev) => ({
@@ -411,8 +465,8 @@ export default function SettingsScreen() {
             <Switch
               value={hospitalSettings.showLogo}
               onValueChange={handleToggleShowLogo}
-              trackColor={{ false: '#334155', true: '#6366F1' }}
-              thumbColor={hospitalSettings.showLogo ? '#FFFFFF' : '#94A3B8'}
+              trackColor={{ false: colors.border, true: colors.accent }}
+              thumbColor={hospitalSettings.showLogo ? '#FFFFFF' : colors.textMuted}
             />
           </View>
 
@@ -429,7 +483,7 @@ export default function SettingsScreen() {
                 <MaterialCommunityIcons
                   name="hospital-building"
                   size={22}
-                  color="#94A3B8"
+                  color={colors.textMuted}
                 />
               </View>
             )}
@@ -446,13 +500,13 @@ export default function SettingsScreen() {
                 disabled={uploadingLogo}
               >
                 {uploadingLogo ? (
-                  <ActivityIndicator color="#38BDF8" size="small" />
+                  <ActivityIndicator color={colors.accent} size="small" />
                 ) : (
                   <>
                     <MaterialCommunityIcons
                       name="image-plus"
                       size={16}
-                      color="#38BDF8"
+                      color={colors.accent}
                       style={{ marginRight: 6 }}
                     />
                     <Text style={styles.logoUploadText}>
@@ -482,7 +536,7 @@ export default function SettingsScreen() {
           <View style={styles.divider} />
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Estado Local</Text>
-            <Text style={[styles.infoValue, { color: '#10B981' }]}>Operativo y Seguro</Text>
+            <Text style={[styles.infoValue, { color: colors.success }]}>Operativo y Seguro</Text>
           </View>
         </View>
       </View>
@@ -490,243 +544,277 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0F172A',
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  headerBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  headerIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-    backgroundColor: 'rgba(167, 139, 250, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#F8FAFC',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: '#94A3B8',
-    marginTop: 2,
-  },
-  section: {
-    marginBottom: 20,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-    marginHorizontal: 4,
-  },
-  sectionHeader: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748B',
-    letterSpacing: 0.8,
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  addButtonText: {
-    color: '#38BDF8',
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  addCard: {
-    backgroundColor: '#1E293B',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  input: {
-    backgroundColor: '#0F172A',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#F8FAFC',
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  saveItemButton: {
-    backgroundColor: '#0284C7',
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  saveItemButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  card: {
-    backgroundColor: '#1E293B',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#334155',
-    overflow: 'hidden',
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  itemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  itemText: {
-    color: '#F8FAFC',
-    fontSize: 14,
-    fontWeight: '500',
-    marginLeft: 10,
-  },
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-  },
-  settingInfo: {
-    flex: 1,
-    paddingRight: 12,
-  },
-  settingTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#F8FAFC',
-  },
-  settingDescription: {
-    fontSize: 12,
-    color: '#94A3B8',
-    marginTop: 2,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#334155',
-    marginLeft: 16,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-  },
-  actionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  actionText: {
-    fontSize: 14,
-    color: '#F8FAFC',
-    fontWeight: '500',
-    marginLeft: 12,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 14,
-    paddingHorizontal: 16,
-  },
-  infoLabel: {
-    fontSize: 13,
-    color: '#94A3B8',
-  },
-  infoValue: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#F8FAFC',
-  },
-  hospitalBody: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  logoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-  },
-  logoPreview: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    resizeMode: 'contain',
-    marginRight: 14,
-    backgroundColor: '#0F172A',
-  },
-  logoPlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: '#0F172A',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  logoInfo: {
-    flex: 1,
-  },
-  logoTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#F8FAFC',
-  },
-  logoDescription: {
-    fontSize: 12,
-    color: '#94A3B8',
-    marginTop: 2,
-    marginBottom: 8,
-  },
-  logoUploadButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.3)',
-  },
-  logoUploadText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#38BDF8',
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: 20,
+      paddingBottom: 40,
+    },
+    headerBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    headerIconContainer: {
+      width: 50,
+      height: 50,
+      borderRadius: 12,
+      backgroundColor: colors.purpleTint,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 14,
+    },
+    headerTextContainer: {
+      flex: 1,
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.textStrong,
+    },
+    headerSubtitle: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    section: {
+      marginBottom: 20,
+    },
+    sectionHeaderRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+      marginHorizontal: 4,
+    },
+    sectionHeader: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textFaint,
+      letterSpacing: 0.8,
+      marginBottom: 10,
+    },
+    addButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+    },
+    addButtonText: {
+      color: colors.accent,
+      fontSize: 12,
+      fontWeight: '600',
+      marginLeft: 4,
+    },
+    addCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 14,
+      padding: 14,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    input: {
+      backgroundColor: colors.background,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      fontSize: 14,
+      color: colors.textStrong,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    saveItemButton: {
+      backgroundColor: colors.accentDark,
+      borderRadius: 8,
+      paddingVertical: 10,
+      alignItems: 'center',
+    },
+    saveItemButtonText: {
+      color: '#FFFFFF',
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+    },
+    themeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+    },
+    themeLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    themeSwatch: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    themeSwatchInner: {
+      width: 12,
+      height: 12,
+      borderRadius: 4,
+    },
+    themeLabel: {
+      color: colors.textStrong,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    itemRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+    },
+    itemLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    itemText: {
+      color: colors.textStrong,
+      fontSize: 14,
+      fontWeight: '500',
+      marginLeft: 10,
+    },
+    settingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 16,
+    },
+    settingInfo: {
+      flex: 1,
+      paddingRight: 12,
+    },
+    settingTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textStrong,
+    },
+    settingDescription: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginLeft: 16,
+    },
+    actionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 16,
+    },
+    actionLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    actionText: {
+      fontSize: 14,
+      color: colors.textStrong,
+      fontWeight: '500',
+      marginLeft: 12,
+    },
+    infoRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 14,
+      paddingHorizontal: 16,
+    },
+    infoLabel: {
+      fontSize: 13,
+      color: colors.textMuted,
+    },
+    infoValue: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textStrong,
+    },
+    hospitalBody: {
+      paddingHorizontal: 16,
+      paddingBottom: 16,
+    },
+    logoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+    },
+    logoPreview: {
+      width: 56,
+      height: 56,
+      borderRadius: 12,
+      resizeMode: 'contain',
+      marginRight: 14,
+      backgroundColor: colors.background,
+    },
+    logoPlaceholder: {
+      width: 56,
+      height: 56,
+      borderRadius: 12,
+      backgroundColor: colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    logoInfo: {
+      flex: 1,
+    },
+    logoTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textStrong,
+    },
+    logoDescription: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 2,
+      marginBottom: 8,
+    },
+    logoUploadButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      backgroundColor: colors.accentTint,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    logoUploadText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.accent,
+    },
+  });

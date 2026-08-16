@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   View,
@@ -25,6 +25,7 @@ import {
   HospitalSettings,
   DEFAULT_HOSPITAL_SETTINGS,
 } from '../../domain/ports/ConfigRepository';
+import { useAppTheme, ThemeColors } from '../theme/ThemeProvider';
 
 interface RoomAssignment {
   workerIds: number[];
@@ -32,6 +33,8 @@ interface RoomAssignment {
 }
 
 export default function PlanningScreen() {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [title, setTitle] = useState('');
   const [planningDate, setPlanningDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -299,7 +302,7 @@ export default function PlanningScreen() {
         {/* Header Banner */}
         <View style={styles.headerBanner}>
           <View style={styles.headerIconContainer}>
-            <MaterialCommunityIcons name="calendar-plus" size={28} color="#38BDF8" />
+            <MaterialCommunityIcons name="calendar-plus" size={28} color={colors.accent} />
           </View>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Crear Planificación</Text>
@@ -315,7 +318,7 @@ export default function PlanningScreen() {
           <TextInput
             style={styles.input}
             placeholder="Ej. Guardia Fin de Semana - Emergencia"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={colors.textMuted}
             value={title}
             onChangeText={setTitle}
           />
@@ -332,7 +335,7 @@ export default function PlanningScreen() {
               <MaterialCommunityIcons
                 name="calendar-month"
                 size={22}
-                color="#38BDF8"
+                color={colors.accent}
               />
             </View>
             <View style={styles.dateInfo}>
@@ -348,7 +351,7 @@ export default function PlanningScreen() {
             <MaterialCommunityIcons
               name="chevron-down"
               size={22}
-              color="#94A3B8"
+              color={colors.textMuted}
             />
           </TouchableOpacity>
           {showDatePicker && (
@@ -385,7 +388,7 @@ export default function PlanningScreen() {
                   <MaterialCommunityIcons
                     name="domain"
                     size={16}
-                    color={isSelected ? '#FFFFFF' : '#94A3B8'}
+                    color={isSelected ? '#FFFFFF' : colors.textMuted}
                     style={{ marginRight: 6 }}
                   />
                   <Text
@@ -414,7 +417,7 @@ export default function PlanningScreen() {
                   <MaterialCommunityIcons
                     name={(shift.icon || 'clock-outline') as any}
                     size={24}
-                    color={isSelected ? '#38BDF8' : '#64748B'}
+                    color={isSelected ? colors.accent : colors.textFaint}
                   />
                   <Text
                     style={[
@@ -479,7 +482,7 @@ export default function PlanningScreen() {
                               <MaterialCommunityIcons
                                 name="account-check"
                                 size={18}
-                                color="#10B981"
+                                color={colors.success}
                               />
                               <View style={styles.assignedInfo}>
                                 <Text style={styles.assignedName}>
@@ -497,7 +500,7 @@ export default function PlanningScreen() {
                                 <MaterialCommunityIcons
                                   name="close-circle"
                                   size={18}
-                                  color="#EF4444"
+                                  color={colors.danger}
                                 />
                               </TouchableOpacity>
                             </View>
@@ -508,7 +511,7 @@ export default function PlanningScreen() {
                             <MaterialCommunityIcons
                               name="account-plus-outline"
                               size={18}
-                              color="#A78BFA"
+                              color={colors.purple}
                             />
                             <View style={styles.assignedInfo}>
                               <Text style={styles.assignedName}>{name}</Text>
@@ -524,7 +527,7 @@ export default function PlanningScreen() {
                               <MaterialCommunityIcons
                                 name="close-circle"
                                 size={18}
-                                color="#EF4444"
+                                color={colors.danger}
                               />
                             </TouchableOpacity>
                           </View>
@@ -543,7 +546,7 @@ export default function PlanningScreen() {
                         <MaterialCommunityIcons
                           name="account-plus"
                           size={18}
-                          color="#38BDF8"
+                          color={colors.accent}
                         />
                         <Text style={styles.roomActionText}>
                           Añadir Trabajador
@@ -559,7 +562,7 @@ export default function PlanningScreen() {
                         <MaterialCommunityIcons
                           name="account-plus-outline"
                           size={18}
-                          color="#A78BFA"
+                          color={colors.purple}
                         />
                         <Text style={styles.roomActionText}>Apoyo Externo</Text>
                       </TouchableOpacity>
@@ -570,7 +573,7 @@ export default function PlanningScreen() {
                         <TextInput
                           style={[styles.input, styles.apoyoInput]}
                           placeholder="Nombre del apoyo externo"
-                          placeholderTextColor="#94A3B8"
+                          placeholderTextColor={colors.textMuted}
                           value={apoyoName}
                           onChangeText={setApoyoName}
                         />
@@ -599,7 +602,7 @@ export default function PlanningScreen() {
           <TextInput
             style={[styles.input, styles.textArea]}
             placeholder="Instrucciones para el personal de guardia..."
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={colors.textMuted}
             value={notes}
             onChangeText={setNotes}
             multiline
@@ -639,15 +642,15 @@ export default function PlanningScreen() {
                   setWorkerSearch('');
                 }}
               >
-                <MaterialCommunityIcons name="close" size={22} color="#94A3B8" />
+                <MaterialCommunityIcons name="close" size={22} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
             <View style={styles.modalSearchBox}>
-              <MaterialCommunityIcons name="magnify" size={18} color="#64748B" />
+              <MaterialCommunityIcons name="magnify" size={18} color={colors.textFaint} />
               <TextInput
                 style={styles.modalSearchInput}
                 placeholder="Buscar trabajador por nombre o cargo..."
-                placeholderTextColor="#64748B"
+                placeholderTextColor={colors.textFaint}
                 value={workerSearch}
                 onChangeText={setWorkerSearch}
                 autoCapitalize="words"
@@ -657,7 +660,7 @@ export default function PlanningScreen() {
                   <MaterialCommunityIcons
                     name="close-circle"
                     size={18}
-                    color="#64748B"
+                    color={colors.textFaint}
                   />
                 </TouchableOpacity>
               )}
@@ -713,7 +716,7 @@ export default function PlanningScreen() {
                               : 'checkbox-blank-circle-outline'
                           }
                           size={22}
-                          color={isSelected ? '#10B981' : '#64748B'}
+                          color={isSelected ? colors.success : colors.textFaint}
                         />
                         <View style={styles.modalWorkerInfo}>
                           <Text style={styles.modalWorkerName}>
@@ -745,7 +748,7 @@ export default function PlanningScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Planificación Guardada</Text>
               <TouchableOpacity onPress={closeReport}>
-                <MaterialCommunityIcons name="close" size={22} color="#94A3B8" />
+                <MaterialCommunityIcons name="close" size={22} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
             <ScrollView
@@ -789,10 +792,11 @@ export default function PlanningScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.background,
   },
   content: {
     padding: 20,
@@ -801,18 +805,18 @@ const styles = StyleSheet.create({
   headerBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   headerIconContainer: {
     width: 50,
     height: 50,
     borderRadius: 12,
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    backgroundColor: colors.accentTint,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -823,11 +827,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: colors.textStrong,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: colors.textMuted,
     marginTop: 2,
   },
   section: {
@@ -842,33 +846,33 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#E2E8F0',
+    color: colors.textSecondary,
     marginBottom: 10,
   },
   sectionHint: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: colors.textMuted,
     marginBottom: 12,
     lineHeight: 16,
   },
   selectedCountBadge: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#38BDF8',
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    color: colors.accent,
+    backgroundColor: colors.accentTint,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
   },
   input: {
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 15,
-    color: '#F8FAFC',
+    color: colors.textStrong,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   textArea: {
     minHeight: 80,
@@ -882,19 +886,19 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   chipActive: {
-    backgroundColor: '#0284C7',
-    borderColor: '#38BDF8',
+    backgroundColor: colors.accentDark,
+    borderColor: colors.accent,
   },
   chipText: {
-    color: '#94A3B8',
+    color: colors.textMuted,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -908,24 +912,24 @@ const styles = StyleSheet.create({
   shiftCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
     gap: 12,
   },
   shiftCardActive: {
-    borderColor: '#38BDF8',
-    backgroundColor: 'rgba(56, 189, 248, 0.08)',
+    borderColor: colors.accent,
+    backgroundColor: colors.accentTint,
   },
   shiftLabel: {
     fontSize: 14,
-    color: '#CBD5E1',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   shiftLabelActive: {
-    color: '#38BDF8',
+    color: colors.accent,
     fontWeight: '700',
   },
   workerListContainer: {
@@ -934,16 +938,16 @@ const styles = StyleSheet.create({
   workerSelectCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
     justifyContent: 'space-between',
   },
   workerSelectCardActive: {
-    borderColor: '#10B981',
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderColor: colors.success,
+    backgroundColor: colors.successTint,
   },
   workerSelectInfo: {
     flex: 1,
@@ -951,22 +955,22 @@ const styles = StyleSheet.create({
   workerSelectName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#F8FAFC',
+    color: colors.textStrong,
   },
   workerSelectPosition: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: colors.textMuted,
     marginTop: 2,
   },
   roomAssignList: {
     gap: 12,
   },
   roomAssignCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   roomAssignHeader: {
     flexDirection: 'row',
@@ -977,11 +981,11 @@ const styles = StyleSheet.create({
   roomAssignName: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: colors.textStrong,
     flex: 1,
   },
   roomAssignReqBadge: {
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    backgroundColor: colors.dangerTint,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -990,7 +994,7 @@ const styles = StyleSheet.create({
   roomAssignReqText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#FCA5A5',
+    color: colors.danger,
   },
   assignedList: {
     gap: 6,
@@ -999,12 +1003,12 @@ const styles = StyleSheet.create({
   assignedRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.background,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   assignedInfo: {
     flex: 1,
@@ -1013,11 +1017,11 @@ const styles = StyleSheet.create({
   assignedName: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#E2E8F0',
+    color: colors.textSecondary,
   },
   assignedPosition: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: colors.textMuted,
     marginTop: 1,
   },
   roomActionsRow: {
@@ -1029,17 +1033,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.background,
     borderRadius: 10,
     paddingVertical: 10,
     gap: 6,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   roomActionText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#CBD5E1',
+    color: colors.textSecondary,
   },
   apoyoRow: {
     flexDirection: 'row',
@@ -1055,18 +1059,18 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 10,
-    backgroundColor: '#0284C7',
+    backgroundColor: colors.accentDark,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyNotice: {
-    color: '#64748B',
+    color: colors.textFaint,
     fontSize: 13,
     fontStyle: 'italic',
     paddingVertical: 10,
   },
   saveButton: {
-    backgroundColor: '#0284C7',
+    backgroundColor: colors.accentDark,
     borderRadius: 12,
     paddingVertical: 15,
     flexDirection: 'row',
@@ -1087,12 +1091,12 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContainer: {
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     borderRadius: 18,
     width: '100%',
     maxHeight: '80%',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
     padding: 20,
   },
   modalHeader: {
@@ -1104,7 +1108,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: colors.textStrong,
   },
   modalScroll: {
     maxHeight: 400,
@@ -1112,35 +1116,35 @@ const styles = StyleSheet.create({
   modalSearchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.background,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
     marginBottom: 12,
     gap: 8,
   },
   modalSearchInput: {
     flex: 1,
-    color: '#F8FAFC',
+    color: colors.textStrong,
     fontSize: 14,
     padding: 0,
   },
   modalWorkerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.background,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   modalWorkerRowActive: {
-    borderColor: '#10B981',
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderColor: colors.success,
+    backgroundColor: colors.successTint,
   },
   modalWorkerInfo: {
     flex: 1,
@@ -1149,29 +1153,29 @@ const styles = StyleSheet.create({
   modalWorkerName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#F8FAFC',
+    color: colors.textStrong,
   },
   modalWorkerPosition: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: colors.textMuted,
     marginTop: 1,
   },
   /* Date Picker */
   dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
     gap: 12,
   },
   dateIconContainer: {
     width: 42,
     height: 42,
     borderRadius: 10,
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    backgroundColor: colors.accentTint,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1181,22 +1185,22 @@ const styles = StyleSheet.create({
   dateLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#F8FAFC',
+    color: colors.textStrong,
     textTransform: 'capitalize',
   },
   dateHint: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: colors.textMuted,
     marginTop: 2,
   },
   /* Report Modal */
   reportModalContainer: {
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     borderRadius: 18,
     width: '100%',
     maxHeight: '85%',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
     padding: 20,
   },
   reportScroll: {
@@ -1206,7 +1210,7 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   exportButton: {
-    backgroundColor: '#0284C7',
+    backgroundColor: colors.accentDark,
     borderRadius: 12,
     paddingVertical: 14,
     flexDirection: 'row',

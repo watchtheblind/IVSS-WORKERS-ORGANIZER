@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,11 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { container } from '../../container';
 import { RoomConfig, RoomStaffingPosition } from '../../domain/constants/appConfig';
+import { useAppTheme, ThemeColors } from '../theme/ThemeProvider';
 
 export default function RoomsScreen() {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [rooms, setRooms] = useState<RoomConfig[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
   const [workerPositions, setWorkerPositions] = useState<string[]>([]);
@@ -190,29 +193,29 @@ export default function RoomsScreen() {
       case 'available':
         return {
           label: 'Disponible',
-          color: '#10B981',
-          bg: 'rgba(16, 185, 129, 0.12)',
+          color: colors.success,
+          bg: colors.successTint,
           icon: 'check-circle-outline',
         };
       case 'occupied':
         return {
           label: 'Ocupada',
-          color: '#EF4444',
-          bg: 'rgba(239, 68, 68, 0.12)',
+          color: colors.danger,
+          bg: colors.dangerTint,
           icon: 'account-group-outline',
         };
       case 'maintenance':
         return {
           label: 'Mantenimiento',
-          color: '#F59E0B',
-          bg: 'rgba(245, 158, 11, 0.12)',
+          color: colors.warning,
+          bg: colors.warningTint,
           icon: 'tools',
         };
       default:
         return {
           label: 'Disponible',
-          color: '#10B981',
-          bg: 'rgba(16, 185, 129, 0.12)',
+          color: colors.success,
+          bg: colors.successTint,
           icon: 'check-circle-outline',
         };
     }
@@ -224,7 +227,7 @@ export default function RoomsScreen() {
         {/* Header Banner - Red Themed */}
         <View style={styles.headerBanner}>
           <View style={styles.headerIconContainer}>
-            <MaterialCommunityIcons name="bed" size={28} color="#EF4444" />
+            <MaterialCommunityIcons name="bed" size={28} color={colors.danger} />
           </View>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Gestión de Salas</Text>
@@ -301,7 +304,7 @@ export default function RoomsScreen() {
 
           {filteredRooms.length === 0 ? (
             <View style={styles.emptyCard}>
-              <MaterialCommunityIcons name="bed-empty" size={44} color="#64748B" />
+              <MaterialCommunityIcons name="bed-empty" size={44} color={colors.textFaint} />
               <Text style={styles.emptyTitle}>No hay salas registradas</Text>
               <Text style={styles.emptySubtitle}>
                 Presiona &quot;Registrar Nueva Sala&quot; para agregar una sala a esta área.
@@ -319,7 +322,7 @@ export default function RoomsScreen() {
                           <MaterialCommunityIcons
                             name="bed-outline"
                             size={20}
-                            color="#EF4444"
+                            color={colors.danger}
                           />
                         </View>
                         <View style={{ flex: 1 }}>
@@ -337,7 +340,7 @@ export default function RoomsScreen() {
                           <MaterialCommunityIcons
                             name="pencil-outline"
                             size={20}
-                            color="#38BDF8"
+                            color={colors.accent}
                           />
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -347,7 +350,7 @@ export default function RoomsScreen() {
                           <MaterialCommunityIcons
                             name="trash-can-outline"
                             size={20}
-                            color="#EF4444"
+                            color={colors.danger}
                           />
                         </TouchableOpacity>
                       </View>
@@ -361,7 +364,7 @@ export default function RoomsScreen() {
                         <MaterialCommunityIcons
                           name="account-group-outline"
                           size={16}
-                          color="#F8FAFC"
+                          color={colors.textStrong}
                         />
                         <Text style={styles.staffingText}>
                           {getStaffingLabel(room)}
@@ -395,7 +398,7 @@ export default function RoomsScreen() {
                         <MaterialCommunityIcons
                           name="information-outline"
                           size={14}
-                          color="#94A3B8"
+                          color={colors.textMuted}
                           style={{ marginTop: 2, marginRight: 6 }}
                         />
                         <Text style={styles.notesText}>{room.notes}</Text>
@@ -424,7 +427,7 @@ export default function RoomsScreen() {
                   <MaterialCommunityIcons
                     name={editingRoomId ? 'pencil' : 'bed'}
                     size={22}
-                    color="#EF4444"
+                    color={colors.danger}
                   />
                 </View>
                 <Text style={styles.modalTitle}>
@@ -435,7 +438,7 @@ export default function RoomsScreen() {
                 onPress={() => setIsModalVisible(false)}
                 style={styles.modalCloseButton}
               >
-                <MaterialCommunityIcons name="close" size={22} color="#94A3B8" />
+                <MaterialCommunityIcons name="close" size={22} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -445,7 +448,7 @@ export default function RoomsScreen() {
               <TextInput
                 style={styles.modalInput}
                 placeholder="Ej. Sala de Observación B"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={colors.textMuted}
                 value={roomName}
                 onChangeText={setRoomName}
               />
@@ -490,7 +493,7 @@ export default function RoomsScreen() {
                   <MaterialCommunityIcons
                     name="account-group"
                     size={16}
-                    color={staffingMode === 'total' ? '#FFFFFF' : '#94A3B8'}
+                    color={staffingMode === 'total' ? '#FFFFFF' : colors.textMuted}
                     style={{ marginRight: 6 }}
                   />
                   <Text
@@ -512,7 +515,7 @@ export default function RoomsScreen() {
                   <MaterialCommunityIcons
                     name="badge-account-horizontal-outline"
                     size={16}
-                    color={staffingMode === 'by_position' ? '#FFFFFF' : '#94A3B8'}
+                    color={staffingMode === 'by_position' ? '#FFFFFF' : colors.textMuted}
                     style={{ marginRight: 6 }}
                   />
                   <Text
@@ -532,7 +535,7 @@ export default function RoomsScreen() {
                   <TextInput
                     style={styles.totalInput}
                     placeholder="4"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor={colors.textMuted}
                     value={staffCount}
                     onChangeText={setStaffCount}
                     keyboardType="number-pad"
@@ -562,7 +565,7 @@ export default function RoomsScreen() {
                             <MaterialCommunityIcons
                               name="minus"
                               size={18}
-                              color="#38BDF8"
+                              color={colors.accent}
                             />
                           </TouchableOpacity>
                           <Text style={styles.stepperValue}>
@@ -580,7 +583,7 @@ export default function RoomsScreen() {
                             <MaterialCommunityIcons
                               name="plus"
                               size={18}
-                              color="#38BDF8"
+                              color={colors.accent}
                             />
                           </TouchableOpacity>
                         </View>
@@ -615,7 +618,7 @@ export default function RoomsScreen() {
               <TextInput
                 style={[styles.modalInput, styles.modalTextArea]}
                 placeholder="Equipamiento, ubicación específica o notas..."
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={colors.textMuted}
                 value={roomNotes}
                 onChangeText={setRoomNotes}
                 multiline
@@ -645,10 +648,11 @@ export default function RoomsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.background,
   },
   content: {
     padding: 20,
@@ -657,18 +661,18 @@ const styles = StyleSheet.create({
   headerBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   headerIconContainer: {
     width: 50,
     height: 50,
     borderRadius: 12,
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    backgroundColor: colors.dangerTint,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -679,18 +683,18 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: colors.textStrong,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: colors.textMuted,
     marginTop: 2,
   },
   addMainButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#DC2626',
+    backgroundColor: colors.dangerDark,
     borderRadius: 12,
     paddingVertical: 14,
     marginBottom: 20,
@@ -707,7 +711,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#CBD5E1',
+    color: colors.textSecondary,
     marginBottom: 10,
   },
   listHeaderRow: {
@@ -721,19 +725,19 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   filterChip: {
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   filterChipActive: {
-    backgroundColor: '#DC2626',
-    borderColor: '#EF4444',
+    backgroundColor: colors.dangerDark,
+    borderColor: colors.danger,
   },
   filterChipText: {
-    color: '#94A3B8',
+    color: colors.textMuted,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -745,11 +749,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   roomCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   roomCardTop: {
     flexDirection: 'row',
@@ -766,7 +770,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 10,
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    backgroundColor: colors.dangerTint,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -774,11 +778,11 @@ const styles = StyleSheet.create({
   roomName: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: colors.textStrong,
   },
   roomDept: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: colors.textMuted,
     marginTop: 2,
   },
   cardActions: {
@@ -789,11 +793,11 @@ const styles = StyleSheet.create({
   actionIconButton: {
     padding: 6,
     borderRadius: 8,
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.background,
   },
   divider: {
     height: 1,
-    backgroundColor: '#334155',
+    backgroundColor: colors.border,
     marginVertical: 12,
   },
   roomMetaRow: {
@@ -804,16 +808,16 @@ const styles = StyleSheet.create({
   staffingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.background,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
     gap: 6,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   staffingText: {
-    color: '#E2E8F0',
+    color: colors.textSecondary,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -832,36 +836,36 @@ const styles = StyleSheet.create({
   notesContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.background,
     borderRadius: 8,
     padding: 10,
     marginTop: 10,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   notesText: {
     flex: 1,
     fontSize: 12,
-    color: '#94A3B8',
+    color: colors.textMuted,
     lineHeight: 16,
   },
   emptyCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 30,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   emptyTitle: {
-    color: '#F8FAFC',
+    color: colors.textStrong,
     fontSize: 16,
     fontWeight: '600',
     marginTop: 12,
   },
   emptySubtitle: {
-    color: '#94A3B8',
+    color: colors.textMuted,
     fontSize: 13,
     textAlign: 'center',
     marginTop: 6,
@@ -876,12 +880,12 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContainer: {
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     borderRadius: 18,
     width: '100%',
     maxHeight: '90%',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
     padding: 20,
   },
   modalHeader: {
@@ -898,7 +902,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    backgroundColor: colors.dangerTint,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
@@ -906,7 +910,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: colors.textStrong,
   },
   modalCloseButton: {
     padding: 4,
@@ -917,19 +921,19 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#CBD5E1',
+    color: colors.textSecondary,
     marginBottom: 6,
     marginTop: 10,
   },
   modalInput: {
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.background,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 14,
-    color: '#F8FAFC',
+    color: colors.textStrong,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   modalTextArea: {
     minHeight: 70,
@@ -942,20 +946,20 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   modalDeptChip: {
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.background,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   modalDeptChipActive: {
-    backgroundColor: '#DC2626',
-    borderColor: '#EF4444',
+    backgroundColor: colors.dangerDark,
+    borderColor: colors.danger,
   },
   modalDeptChipText: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: colors.textMuted,
   },
   modalDeptChipTextActive: {
     color: '#FFFFFF',
@@ -971,18 +975,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.background,
     borderRadius: 10,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   modeToggleActive: {
-    backgroundColor: '#0284C7',
-    borderColor: '#38BDF8',
+    backgroundColor: colors.accentDark,
+    borderColor: colors.accent,
   },
   modeToggleText: {
-    color: '#94A3B8',
+    color: colors.textMuted,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -998,17 +1002,17 @@ const styles = StyleSheet.create({
   totalInputLabel: {
     flex: 1,
     fontSize: 13,
-    color: '#94A3B8',
+    color: colors.textMuted,
   },
   totalInput: {
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.background,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 14,
-    color: '#F8FAFC',
+    color: colors.textStrong,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
     width: 80,
     textAlign: 'center',
   },
@@ -1020,17 +1024,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.background,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   positionName: {
     flex: 1,
     fontSize: 13,
-    color: '#E2E8F0',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   stepper: {
@@ -1042,21 +1046,21 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 8,
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   stepperValue: {
     minWidth: 24,
     textAlign: 'center',
-    color: '#F8FAFC',
+    color: colors.textStrong,
     fontSize: 15,
     fontWeight: '700',
   },
   emptyNoticeText: {
-    color: '#64748B',
+    color: colors.textFaint,
     fontSize: 13,
     fontStyle: 'italic',
     paddingVertical: 8,
@@ -1067,12 +1071,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statusToggle: {
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.background,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
     alignItems: 'center',
   },
   statusToggleText: {
@@ -1080,7 +1084,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   modalSaveButton: {
-    backgroundColor: '#DC2626',
+    backgroundColor: colors.dangerDark,
     borderRadius: 12,
     paddingVertical: 14,
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,8 +14,11 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { container } from '../../container';
 import { Worker } from '../../domain/entities/Worker';
+import { useAppTheme, ThemeColors } from '../theme/ThemeProvider';
 
 export default function WorkersScreen() {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [fullName, setFullName] = useState('');
@@ -104,7 +107,7 @@ export default function WorkersScreen() {
   const renderWorkerItem = ({ item }: { item: Worker }) => (
     <View style={styles.workerCard}>
       <View style={styles.workerAvatar}>
-        <MaterialCommunityIcons name="account" size={24} color="#38BDF8" />
+        <MaterialCommunityIcons name="account" size={24} color={colors.accent} />
       </View>
       <View style={styles.workerInfo}>
         <Text style={styles.workerName}>{item.full_name}</Text>
@@ -113,19 +116,19 @@ export default function WorkersScreen() {
       <View
         style={[
           styles.syncBadge,
-          { backgroundColor: item.synced ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)' },
+          { backgroundColor: item.synced ? colors.successTint : colors.warningTint },
         ]}
       >
         <MaterialCommunityIcons
           name={item.synced ? 'cloud-check' : 'cloud-sync'}
           size={14}
-          color={item.synced ? '#10B981' : '#F59E0B'}
+          color={item.synced ? colors.success : colors.warning}
           style={{ marginRight: 4 }}
         />
         <Text
           style={[
             styles.syncBadgeText,
-            { color: item.synced ? '#10B981' : '#F59E0B' },
+            { color: item.synced ? colors.success : colors.warning },
           ]}
         >
           {item.synced ? 'Sincronizado' : 'Pendiente'}
@@ -151,7 +154,7 @@ export default function WorkersScreen() {
           <View
             style={[
               styles.connectionDot,
-              { backgroundColor: isConnected ? '#10B981' : '#EF4444' },
+              { backgroundColor: isConnected ? colors.success : colors.danger },
             ]}
           />
           <Text style={styles.connectionText}>
@@ -163,17 +166,17 @@ export default function WorkersScreen() {
       {/* Actions / Search Bar */}
       <View style={styles.searchSection}>
         <View style={styles.searchBox}>
-          <MaterialCommunityIcons name="magnify" size={20} color="#94A3B8" />
+          <MaterialCommunityIcons name="magnify" size={20} color={colors.textMuted} />
           <TextInput
             style={styles.searchInput}
             placeholder="Buscar por nombre o cargo..."
-            placeholderTextColor="#64748B"
+            placeholderTextColor={colors.textFaint}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <MaterialCommunityIcons name="close-circle" size={18} color="#94A3B8" />
+              <MaterialCommunityIcons name="close-circle" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -197,14 +200,14 @@ export default function WorkersScreen() {
           <TextInput
             style={styles.input}
             placeholder="Nombre Completo"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={colors.textMuted}
             value={fullName}
             onChangeText={setFullName}
           />
           <TextInput
             style={styles.input}
             placeholder="Cargo / Especialidad (Ej. Médico Cirujano)"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={colors.textMuted}
             value={position}
             onChangeText={setPosition}
           />
@@ -233,10 +236,10 @@ export default function WorkersScreen() {
           disabled={syncing}
         >
           {syncing ? (
-            <ActivityIndicator color="#38BDF8" size="small" />
+            <ActivityIndicator color={colors.accent} size="small" />
           ) : (
             <>
-              <MaterialCommunityIcons name="sync" size={18} color="#38BDF8" style={{ marginRight: 6 }} />
+              <MaterialCommunityIcons name="sync" size={18} color={colors.accent} style={{ marginRight: 6 }} />
               <Text style={styles.secondaryButtonText}>Sincronizar</Text>
             </>
           )}
@@ -256,7 +259,7 @@ export default function WorkersScreen() {
             }
             ListEmptyComponent={
               <View style={styles.emptyContent}>
-                <MaterialCommunityIcons name="account-search-outline" size={48} color="#475569" />
+                <MaterialCommunityIcons name="account-search-outline" size={48} color={colors.textFaint} />
                 <Text style={styles.emptyText}>
                   {searchQuery ? 'No se encontraron resultados.' : 'No hay personal registrado aún.'}
                 </Text>
@@ -269,10 +272,11 @@ export default function WorkersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.background,
   },
   topHeader: {
     flexDirection: 'row',
@@ -285,22 +289,22 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: colors.textStrong,
   },
   screenSubtitle: {
     fontSize: 13,
-    color: '#94A3B8',
+    color: colors.textMuted,
     marginTop: 2,
   },
   networkIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   connectionDot: {
     width: 8,
@@ -310,7 +314,7 @@ const styles = StyleSheet.create({
   },
   connectionText: {
     fontSize: 12,
-    color: '#CBD5E1',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   searchSection: {
@@ -324,21 +328,21 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   searchInput: {
     flex: 1,
-    color: '#F8FAFC',
+    color: colors.textStrong,
     fontSize: 14,
     marginLeft: 8,
   },
   toggleFormButton: {
-    backgroundColor: '#0284C7',
+    backgroundColor: colors.accentDark,
     width: 44,
     height: 44,
     borderRadius: 12,
@@ -346,33 +350,33 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   formSection: {
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     marginHorizontal: 20,
     borderRadius: 14,
     padding: 16,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   formTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#E2E8F0',
+    color: colors.textSecondary,
     marginBottom: 12,
   },
   input: {
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.background,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
-    color: '#F8FAFC',
+    color: colors.textStrong,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   primaryButton: {
-    backgroundColor: '#0284C7',
+    backgroundColor: colors.accentDark,
     borderRadius: 10,
     paddingVertical: 12,
     flexDirection: 'row',
@@ -397,16 +401,16 @@ const styles = StyleSheet.create({
   secondaryButton: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   secondaryButtonText: {
-    color: '#CBD5E1',
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -416,23 +420,23 @@ const styles = StyleSheet.create({
   },
   reportContainer: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.background,
   },
   workerCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 14,
     marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   workerAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    backgroundColor: colors.accentTint,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -443,11 +447,11 @@ const styles = StyleSheet.create({
   workerName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#F8FAFC',
+    color: colors.textStrong,
   },
   workerPosition: {
     fontSize: 13,
-    color: '#94A3B8',
+    color: colors.textMuted,
     marginTop: 2,
   },
   syncBadge: {
@@ -471,7 +475,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    color: '#64748B',
+    color: colors.textFaint,
     fontSize: 14,
     marginTop: 10,
     textAlign: 'center',

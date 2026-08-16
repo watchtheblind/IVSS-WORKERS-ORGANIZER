@@ -1,47 +1,53 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, StyleSheet, StatusBar, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedTabBar, TabItem } from '../components/AnimatedTabBar';
 import { APP_CONFIG } from '../../domain/constants/appConfig';
+import { useAppTheme, ThemeColors } from '../theme/ThemeProvider';
 import PlanningScreen from './PlanningScreen';
 import WorkersScreen from './WorkersScreen';
 import RoomsScreen from './RoomsScreen';
 import SettingsScreen from './SettingsScreen';
 
-const TABS: TabItem[] = [
-  {
-    key: 'planning',
-    label: 'Planificación',
-    icon: 'plus-circle-outline',
-    activeColor: '#38BDF8',
-    activeBgColor: 'rgba(56, 189, 248, 0.15)',
-  },
-  {
-    key: 'workers',
-    label: 'Trabajadores',
-    icon: 'account-outline',
-    activeColor: '#10B981',
-    activeBgColor: 'rgba(16, 185, 129, 0.15)',
-  },
-  {
-    key: 'rooms',
-    label: 'Salas',
-    icon: 'bed-outline',
-    activeColor: '#EF4444',
-    activeBgColor: 'rgba(239, 68, 68, 0.15)',
-  },
-  {
-    key: 'settings',
-    label: 'Configuración',
-    icon: 'cog-outline',
-    activeColor: '#A78BFA',
-    activeBgColor: 'rgba(167, 139, 250, 0.15)',
-  },
-];
+function buildTabs(colors: ThemeColors): TabItem[] {
+  return [
+    {
+      key: 'planning',
+      label: 'Planificación',
+      icon: 'plus-circle-outline',
+      activeColor: colors.accent,
+      activeBgColor: colors.accentTint,
+    },
+    {
+      key: 'workers',
+      label: 'Trabajadores',
+      icon: 'account-outline',
+      activeColor: colors.success,
+      activeBgColor: colors.successTint,
+    },
+    {
+      key: 'rooms',
+      label: 'Salas',
+      icon: 'bed-outline',
+      activeColor: colors.danger,
+      activeBgColor: colors.dangerTint,
+    },
+    {
+      key: 'settings',
+      label: 'Configuración',
+      icon: 'cog-outline',
+      activeColor: colors.purple,
+      activeBgColor: colors.purpleTint,
+    },
+  ];
+}
 
 export default function HomeScreen() {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useAppTheme();
+  const tabs = useMemo(() => buildTabs(colors), [colors]);
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const renderActiveScreen = () => {
     switch (activeTabIndex) {
@@ -66,7 +72,10 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0B1120" />
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.header}
+      />
 
       {/* Main Header Bar */}
       <View style={[styles.appHeader, { paddingTop: Math.max(insets.top, 16) + 8 }]}>
@@ -88,7 +97,7 @@ export default function HomeScreen() {
 
       {/* Gorhom Animated Tab Bar */}
       <AnimatedTabBar
-        tabs={TABS}
+        tabs={tabs}
         selectedIndex={activeTabIndex}
         onTabPress={setActiveTabIndex}
       />
@@ -96,50 +105,51 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0F172A',
-  },
-  appHeader: {
-    backgroundColor: '#0B1120',
-    paddingHorizontal: 20,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  appBrand: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#F8FAFC',
-    letterSpacing: 0.5,
-  },
-  appDate: {
-    fontSize: 12,
-    color: '#94A3B8',
-    marginTop: 2,
-    textTransform: 'capitalize',
-  },
-  badgeIVSS: {
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.3)',
-  },
-  badgeIVSSText: {
-    color: '#38BDF8',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  screenContainer: {
-    flex: 1,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    appHeader: {
+      backgroundColor: colors.header,
+      paddingHorizontal: 20,
+      paddingBottom: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    appBrand: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: colors.textStrong,
+      letterSpacing: 0.5,
+    },
+    appDate: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 2,
+      textTransform: 'capitalize',
+    },
+    badgeIVSS: {
+      backgroundColor: colors.accentTint,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    badgeIVSSText: {
+      color: colors.accent,
+      fontSize: 11,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+    },
+    screenContainer: {
+      flex: 1,
+    },
+  });
