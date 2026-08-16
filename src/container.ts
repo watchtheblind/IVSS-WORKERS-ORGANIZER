@@ -7,6 +7,7 @@ import { NetworkListener } from './infrastructure/network/NetworkListener';
 import { AddWorkerUseCase } from './application/use-cases/AddWorker';
 import { GetWorkersUseCase } from './application/use-cases/GetWorkers';
 import { SyncWorkersUseCase } from './application/use-cases/SyncWorkers';
+import { SyncConfigUseCase } from './application/use-cases/SyncConfig';
 import { GenerateReportImageUseCase } from './application/use-cases/GenerateReportImage';
 
 // --- Driven Adapters (Infrastructure) ---
@@ -21,6 +22,7 @@ const networkListener = new NetworkListener();
 const addWorkerUseCase = new AddWorkerUseCase(workerRepository);
 const getWorkersUseCase = new GetWorkersUseCase(workerRepository);
 const syncWorkersUseCase = new SyncWorkersUseCase(workerRepository, syncService);
+const syncConfigUseCase = new SyncConfigUseCase(configRepository, syncService);
 const generateReportImageUseCase = new GenerateReportImageUseCase(imageService, shareService);
 
 export const container = {
@@ -36,6 +38,7 @@ export const container = {
   addWorkerUseCase,
   getWorkersUseCase,
   syncWorkersUseCase,
+  syncConfigUseCase,
   generateReportImageUseCase,
 };
 

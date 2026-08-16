@@ -82,6 +82,10 @@ export default function WorkersScreen() {
     try {
       const result = await container.syncWorkersUseCase.execute();
       console.log(`Sync complete: ${result.pushed} pushed, ${result.pulled} pulled`);
+      const configResult = await container.syncConfigUseCase.execute();
+      console.log(
+        `Config sync complete: ${configResult.pushed} pushed, ${configResult.pulled} pulled`
+      );
       await loadWorkers();
     } catch (error) {
       console.error('Sync error:', error);

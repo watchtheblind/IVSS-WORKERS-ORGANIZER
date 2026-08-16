@@ -75,6 +75,13 @@ USING (true)
 WITH CHECK (true);
 ```
 
+> [!NOTE]
+> The app also syncs configuration (departments, shifts, rooms) and hospital
+> settings to Supabase. After running the script above, open
+> [`supabase/config_sync.sql`](supabase/config_sync.sql), copy it into the
+> **SQL Editor**, and click **"Run"** to create those tables with the same
+> public RLS policy.
+
 ### Step 3: Configure Environment Variables
 1. Copy the example environment file:
    ```bash
