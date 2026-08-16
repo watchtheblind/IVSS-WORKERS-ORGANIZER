@@ -1,3 +1,7 @@
+export interface ShareOptions {
+  dialogTitle?: string;
+}
+
 export interface ShareService {
-  shareFile(fileUri: string): Promise<void>;
+  shareFile(fileUri: string, options?: ShareOptions): Promise<void>;
 }

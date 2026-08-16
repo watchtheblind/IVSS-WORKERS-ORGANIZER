@@ -1,7 +1,9 @@
 import { RefObject } from 'react';
 import { View } from 'react-native';
-import { ImageService } from '../../domain/ports/ImageService';
-import { ShareService } from '../../domain/ports/ShareService';
+import { ImageService, CaptureOptions } from '../../domain/ports/ImageService';
+import { ShareService, ShareOptions } from '../../domain/ports/ShareService';
+
+export interface GenerateReportOptions extends CaptureOptions, ShareOptions {}
 
 export class GenerateReportImageUseCase {
   constructor(
@@ -9,9 +11,16 @@ export class GenerateReportImageUseCase {
     private readonly shareService: ShareService
   ) {}
 
-  async execute(viewRef: RefObject<View | null>): Promise<string> {
-    const imageUri = await this.imageService.captureView(viewRef);
-    await this.shareService.shareFile(imageUri);
+  async execute(
+    viewRef: RefObject<View | null>,
+    options?: GenerateReportOptions
+  ): Promise<string> {
+    const imageUri = await this.imageService.captureView(viewRef, {
+      fileName: options?.fileName,
+    });
+    await this.shareService.shareFile(imageUri, {
+      dialogTitle: options?.dialogTitle,
+    });
     return imageUri;
   }
 }
