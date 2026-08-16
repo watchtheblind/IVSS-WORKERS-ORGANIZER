@@ -1,24 +1,11 @@
-import * as SQLite from 'expo-sqlite';
+import type { SQLiteDatabase } from 'expo-sqlite';
+import { getDatabase } from '../database';
 import { Worker, NewWorker } from '../../domain/entities/Worker';
 import { WorkerRepository } from '../../domain/ports/WorkerRepository';
 
 export class SQLiteWorkerRepository implements WorkerRepository {
-  private db: SQLite.SQLiteDatabase | null = null;
-
-  async getDatabase(): Promise<SQLite.SQLiteDatabase> {
-    if (!this.db) {
-      this.db = await SQLite.openDatabaseAsync('workers.db');
-      await this.db.execAsync(`
-        CREATE TABLE IF NOT EXISTS workers (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          supabase_id TEXT UNIQUE,
-          full_name TEXT NOT NULL,
-          position TEXT NOT NULL,
-          synced INTEGER DEFAULT 0
-        );
-      `);
-    }
-    return this.db;
+  async getDatabase(): Promise<SQLiteDatabase> {
+    return getDatabase();
   }
 
   async addWorker(worker: NewWorker): Promise<Worker> {

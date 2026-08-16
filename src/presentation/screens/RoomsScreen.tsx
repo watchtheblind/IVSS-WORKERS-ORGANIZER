@@ -11,11 +11,12 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { container } from '../../container';
-import { RoomConfig } from '../../domain/constants/appConfig';
+import { RoomConfig, RoomStaffingPosition } from '../../domain/constants/appConfig';
 
 export default function RoomsScreen() {
   const [rooms, setRooms] = useState<RoomConfig[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
+  const [workerPositions, setWorkerPositions] = useState<string[]>([]);
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>('Todas');
 
   // Form State for Add / Edit Modal
@@ -23,18 +24,23 @@ export default function RoomsScreen() {
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [roomName, setRoomName] = useState('');
   const [roomDept, setRoomDept] = useState('');
-  const [roomCapacity, setRoomCapacity] = useState('4');
+  const [staffingMode, setStaffingMode] = useState<'total' | 'by_position'>('total');
+  const [staffCount, setStaffCount] = useState('1');
+  const [positionCounts, setPositionCounts] = useState<Record<string, number>>({});
   const [roomStatus, setRoomStatus] = useState<'available' | 'occupied' | 'maintenance'>('available');
   const [roomNotes, setRoomNotes] = useState('');
 
   const loadData = useCallback(async () => {
     try {
-      const [deptList, roomList] = await Promise.all([
+      const [deptList, roomList, workerList] = await Promise.all([
         container.configRepository.getDepartments(),
         container.configRepository.getRooms(),
+        container.getWorkersUseCase.execute(),
       ]);
       setDepartments(deptList);
       setRooms(roomList);
+      const positions = Array.from(new Set(workerList.map((w) => w.position).filter(Boolean))).sort();
+      setWorkerPositions(positions);
       if (deptList.length > 0 && !roomDept) {
         setRoomDept(deptList[0]);
       }
@@ -51,17 +57,38 @@ export default function RoomsScreen() {
     setEditingRoomId(null);
     setRoomName('');
     setRoomDept(departments[0] || '');
-    setRoomCapacity('4');
+    setStaffingMode('total');
+    setStaffCount('1');
+    setPositionCounts(buildEmptyPositionCounts());
     setRoomStatus('available');
     setRoomNotes('');
     setIsModalVisible(true);
+  };
+
+  const buildEmptyPositionCounts = (): Record<string, number> => {
+    const counts: Record<string, number> = {};
+    workerPositions.forEach((p) => {
+      counts[p] = 0;
+    });
+    return counts;
   };
 
   const openEditModal = (room: RoomConfig) => {
     setEditingRoomId(room.id);
     setRoomName(room.name);
     setRoomDept(room.department);
-    setRoomCapacity(room.capacity.toString());
+    setStaffingMode(room.staffingMode || 'total');
+    setStaffCount(room.staffCount?.toString() || '1');
+    const counts: Record<string, number> = {};
+    workerPositions.forEach((p) => {
+      counts[p] = 0;
+    });
+    (room.positions || []).forEach((sp) => {
+      if (counts[sp.position] !== undefined) {
+        counts[sp.position] = sp.count;
+      }
+    });
+    setPositionCounts(counts);
     setRoomStatus(room.status);
     setRoomNotes(room.notes || '');
     setIsModalVisible(true);
@@ -77,7 +104,13 @@ export default function RoomsScreen() {
       return;
     }
 
-    const parsedCapacity = parseInt(roomCapacity, 10) || 1;
+    const parsedCount = parseInt(staffCount, 10) || 1;
+    const positions: RoomStaffingPosition[] =
+      staffingMode === 'by_position'
+        ? workerPositions
+            .filter((p) => (positionCounts[p] || 0) > 0)
+            .map((p) => ({ position: p, count: positionCounts[p] }))
+        : [];
 
     try {
       if (editingRoomId) {
@@ -86,7 +119,9 @@ export default function RoomsScreen() {
           id: editingRoomId,
           name: roomName.trim(),
           department: roomDept,
-          capacity: parsedCapacity,
+          staffingMode,
+          staffCount: parsedCount,
+          positions,
           status: roomStatus,
           notes: roomNotes.trim(),
         };
@@ -99,7 +134,9 @@ export default function RoomsScreen() {
           id: 'room_' + Date.now(),
           name: roomName.trim(),
           department: roomDept,
-          capacity: parsedCapacity,
+          staffingMode,
+          staffCount: parsedCount,
+          positions,
           status: roomStatus,
           notes: roomNotes.trim(),
         };
@@ -139,6 +176,14 @@ export default function RoomsScreen() {
     if (selectedDeptFilter === 'Todas') return true;
     return r.department === selectedDeptFilter;
   });
+
+  const getStaffingLabel = (room: RoomConfig) => {
+    if (room.staffingMode === 'by_position' && room.positions.length > 0) {
+      return room.positions.map((p) => `${p.count} ${p.position}`).join(' · ');
+    }
+    const count = room.staffCount || 0;
+    return `${count} ${count === 1 ? 'Trabajador' : 'Trabajadores'}`;
+  };
 
   const getStatusBadge = (status: RoomConfig['status']) => {
     switch (status) {
@@ -184,7 +229,7 @@ export default function RoomsScreen() {
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Gestión de Salas</Text>
             <Text style={styles.headerSubtitle}>
-              Administración de salas, camas y áreas de atención
+              Administración de salas, personal y áreas de atención
             </Text>
           </View>
         </View>
@@ -312,14 +357,14 @@ export default function RoomsScreen() {
 
                     {/* Room Meta Badges */}
                     <View style={styles.roomMetaRow}>
-                      <View style={styles.capacityBadge}>
+                      <View style={styles.staffingBadge}>
                         <MaterialCommunityIcons
-                          name="bunk-bed-outline"
+                          name="account-group-outline"
                           size={16}
                           color="#F8FAFC"
                         />
-                        <Text style={styles.capacityText}>
-                          {room.capacity} {room.capacity === 1 ? 'Cama' : 'Camas'}
+                        <Text style={styles.staffingText}>
+                          {getStaffingLabel(room)}
                         </Text>
                       </View>
 
@@ -432,41 +477,138 @@ export default function RoomsScreen() {
                 })}
               </View>
 
-              {/* Capacity & Status */}
-              <View style={styles.modalTwoCol}>
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={styles.inputLabel}>Capacidad (Camas)</Text>
+              {/* Staffing Configuration */}
+              <Text style={styles.inputLabel}>Personal Requerido</Text>
+              <View style={styles.modeToggleRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.modeToggle,
+                    staffingMode === 'total' && styles.modeToggleActive,
+                  ]}
+                  onPress={() => setStaffingMode('total')}
+                >
+                  <MaterialCommunityIcons
+                    name="account-group"
+                    size={16}
+                    color={staffingMode === 'total' ? '#FFFFFF' : '#94A3B8'}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text
+                    style={[
+                      styles.modeToggleText,
+                      staffingMode === 'total' && styles.modeToggleTextActive,
+                    ]}
+                  >
+                    Total
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.modeToggle,
+                    staffingMode === 'by_position' && styles.modeToggleActive,
+                  ]}
+                  onPress={() => setStaffingMode('by_position')}
+                >
+                  <MaterialCommunityIcons
+                    name="badge-account-horizontal-outline"
+                    size={16}
+                    color={staffingMode === 'by_position' ? '#FFFFFF' : '#94A3B8'}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text
+                    style={[
+                      styles.modeToggleText,
+                      staffingMode === 'by_position' && styles.modeToggleTextActive,
+                    ]}
+                  >
+                    Por Cargo
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {staffingMode === 'total' ? (
+                <View style={styles.totalInputRow}>
+                  <Text style={styles.totalInputLabel}>Número de trabajadores</Text>
                   <TextInput
-                    style={styles.modalInput}
+                    style={styles.totalInput}
                     placeholder="4"
                     placeholderTextColor="#94A3B8"
-                    value={roomCapacity}
-                    onChangeText={setRoomCapacity}
+                    value={staffCount}
+                    onChangeText={setStaffCount}
                     keyboardType="number-pad"
                   />
                 </View>
-
-                <View style={{ flex: 1, marginLeft: 8 }}>
-                  <Text style={styles.inputLabel}>Estado</Text>
-                  <TouchableOpacity
-                    style={styles.statusToggle}
-                    onPress={() => {
-                      if (roomStatus === 'available') setRoomStatus('occupied');
-                      else if (roomStatus === 'occupied') setRoomStatus('maintenance');
-                      else setRoomStatus('available');
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.statusToggleText,
-                        { color: getStatusBadge(roomStatus).color },
-                      ]}
-                    >
-                      {getStatusBadge(roomStatus).label}
+              ) : (
+                <View style={styles.positionList}>
+                  {workerPositions.length === 0 ? (
+                    <Text style={styles.emptyNoticeText}>
+                      No hay cargos registrados. Añade trabajadores en la pestaña
+                      Trabajadores para poder configurar por cargo.
                     </Text>
-                  </TouchableOpacity>
+                  ) : (
+                    workerPositions.map((position) => (
+                      <View key={position} style={styles.positionRow}>
+                        <Text style={styles.positionName}>{position}</Text>
+                        <View style={styles.stepper}>
+                          <TouchableOpacity
+                            style={styles.stepperBtn}
+                            onPress={() =>
+                              setPositionCounts((prev) => ({
+                                ...prev,
+                                [position]: Math.max(0, (prev[position] || 0) - 1),
+                              }))
+                            }
+                          >
+                            <MaterialCommunityIcons
+                              name="minus"
+                              size={18}
+                              color="#38BDF8"
+                            />
+                          </TouchableOpacity>
+                          <Text style={styles.stepperValue}>
+                            {positionCounts[position] || 0}
+                          </Text>
+                          <TouchableOpacity
+                            style={styles.stepperBtn}
+                            onPress={() =>
+                              setPositionCounts((prev) => ({
+                                ...prev,
+                                [position]: (prev[position] || 0) + 1,
+                              }))
+                            }
+                          >
+                            <MaterialCommunityIcons
+                              name="plus"
+                              size={18}
+                              color="#38BDF8"
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))
+                  )}
                 </View>
-              </View>
+              )}
+
+              {/* Status */}
+              <Text style={styles.inputLabel}>Estado</Text>
+              <TouchableOpacity
+                style={styles.statusToggle}
+                onPress={() => {
+                  if (roomStatus === 'available') setRoomStatus('occupied');
+                  else if (roomStatus === 'occupied') setRoomStatus('maintenance');
+                  else setRoomStatus('available');
+                }}
+              >
+                <Text
+                  style={[
+                    styles.statusToggleText,
+                    { color: getStatusBadge(roomStatus).color },
+                  ]}
+                >
+                  {getStatusBadge(roomStatus).label}
+                </Text>
+              </TouchableOpacity>
 
               {/* Notes */}
               <Text style={styles.inputLabel}>Detalles / Observaciones</Text>
@@ -659,7 +801,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  capacityBadge: {
+  staffingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#0F172A',
@@ -670,7 +812,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155',
   },
-  capacityText: {
+  staffingText: {
     color: '#E2E8F0',
     fontSize: 12,
     fontWeight: '600',
@@ -818,6 +960,106 @@ const styles = StyleSheet.create({
   modalDeptChipTextActive: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  modeToggleRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  modeToggle: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0F172A',
+    borderRadius: 10,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  modeToggleActive: {
+    backgroundColor: '#0284C7',
+    borderColor: '#38BDF8',
+  },
+  modeToggleText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  modeToggleTextActive: {
+    color: '#FFFFFF',
+  },
+  totalInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 6,
+  },
+  totalInputLabel: {
+    flex: 1,
+    fontSize: 13,
+    color: '#94A3B8',
+  },
+  totalInput: {
+    backgroundColor: '#0F172A',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#334155',
+    width: 80,
+    textAlign: 'center',
+  },
+  positionList: {
+    gap: 8,
+    marginBottom: 6,
+  },
+  positionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0F172A',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  positionName: {
+    flex: 1,
+    fontSize: 13,
+    color: '#E2E8F0',
+    fontWeight: '500',
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  stepperBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: '#1E293B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  stepperValue: {
+    minWidth: 24,
+    textAlign: 'center',
+    color: '#F8FAFC',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  emptyNoticeText: {
+    color: '#64748B',
+    fontSize: 13,
+    fontStyle: 'italic',
+    paddingVertical: 8,
   },
   modalTwoCol: {
     flexDirection: 'row',

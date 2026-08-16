@@ -1,71 +1,88 @@
-import * as SQLite from 'expo-sqlite';
 import { ConfigRepository } from '../../domain/ports/ConfigRepository';
-import { APP_CONFIG, ShiftConfig, RoomConfig } from '../../domain/constants/appConfig';
+import { APP_CONFIG, ShiftConfig, RoomConfig, RoomStaffingPosition } from '../../domain/constants/appConfig';
+import { getDatabase } from '../database';
+import type { SQLiteDatabase } from 'expo-sqlite';
+
+function parsePositions(raw: string | null): RoomStaffingPosition[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function mapRoom(row: any): RoomConfig {
+  return {
+    id: row.id,
+    name: row.name,
+    department: row.department,
+    staffingMode: row.staffing_mode || 'total',
+    staffCount: row.staff_count || 0,
+    positions: parsePositions(row.positions),
+    status: row.status || 'available',
+    notes: row.notes || '',
+  };
+}
 
 export class SQLiteConfigRepository implements ConfigRepository {
-  private db: SQLite.SQLiteDatabase | null = null;
+  private seeded = false;
 
-  async getDatabase(): Promise<SQLite.SQLiteDatabase> {
-    if (!this.db) {
-      this.db = await SQLite.openDatabaseAsync('workers.db');
-      await this.db.execAsync(`
-        CREATE TABLE IF NOT EXISTS departments (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT UNIQUE NOT NULL
+  async getDatabase(): Promise<SQLiteDatabase> {
+    const db = await getDatabase();
+    if (!this.seeded) {
+      await this.seedDefaults(db);
+      this.seeded = true;
+    }
+    return db;
+  }
+
+  private async seedDefaults(db: SQLiteDatabase): Promise<void> {
+    const existingDepts = await db.getAllAsync<{ id: number; name: string }>(
+      'SELECT * FROM departments'
+    );
+    if (existingDepts.length === 0) {
+      for (const dept of APP_CONFIG.defaultDepartments) {
+        await db.runAsync(
+          'INSERT OR IGNORE INTO departments (name) VALUES (?)',
+          [dept]
         );
-        CREATE TABLE IF NOT EXISTS shifts (
-          id TEXT PRIMARY KEY,
-          label TEXT NOT NULL,
-          icon TEXT NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS rooms (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          department TEXT NOT NULL,
-          capacity INTEGER DEFAULT 1,
-          status TEXT DEFAULT 'available',
-          notes TEXT DEFAULT ''
-        );
-      `);
-
-      // Seed initial defaults if empty
-      const existingDepts = await this.db.getAllAsync<{ id: number; name: string }>(
-        'SELECT * FROM departments'
-      );
-      if (existingDepts.length === 0) {
-        for (const dept of APP_CONFIG.defaultDepartments) {
-          await this.db.runAsync(
-            'INSERT OR IGNORE INTO departments (name) VALUES (?)',
-            [dept]
-          );
-        }
-      }
-
-      const existingShifts = await this.db.getAllAsync<ShiftConfig>(
-        'SELECT * FROM shifts'
-      );
-      if (existingShifts.length === 0) {
-        for (const shift of APP_CONFIG.defaultShifts) {
-          await this.db.runAsync(
-            'INSERT OR IGNORE INTO shifts (id, label, icon) VALUES (?, ?, ?)',
-            [shift.id, shift.label, shift.icon]
-          );
-        }
-      }
-
-      const existingRooms = await this.db.getAllAsync<RoomConfig>(
-        'SELECT * FROM rooms'
-      );
-      if (existingRooms.length === 0) {
-        for (const room of APP_CONFIG.defaultRooms) {
-          await this.db.runAsync(
-            'INSERT OR IGNORE INTO rooms (id, name, department, capacity, status, notes) VALUES (?, ?, ?, ?, ?, ?)',
-            [room.id, room.name, room.department, room.capacity, room.status, room.notes || '']
-          );
-        }
       }
     }
-    return this.db;
+
+    const existingShifts = await db.getAllAsync<ShiftConfig>(
+      'SELECT * FROM shifts'
+    );
+    if (existingShifts.length === 0) {
+      for (const shift of APP_CONFIG.defaultShifts) {
+        await db.runAsync(
+          'INSERT OR IGNORE INTO shifts (id, label, icon) VALUES (?, ?, ?)',
+          [shift.id, shift.label, shift.icon]
+        );
+      }
+    }
+
+    const existingRooms = await db.getAllAsync<RoomConfig>(
+      'SELECT * FROM rooms'
+    );
+    if (existingRooms.length === 0) {
+      for (const room of APP_CONFIG.defaultRooms) {
+        await db.runAsync(
+          'INSERT OR IGNORE INTO rooms (id, name, department, staffing_mode, staff_count, positions, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [
+            room.id,
+            room.name,
+            room.department,
+            room.staffingMode,
+            room.staffCount,
+            JSON.stringify(room.positions || []),
+            room.status,
+            room.notes || '',
+          ]
+        );
+      }
+    }
   }
 
   async getDepartments(): Promise<string[]> {
@@ -115,20 +132,34 @@ export class SQLiteConfigRepository implements ConfigRepository {
 
   async getRooms(department?: string): Promise<RoomConfig[]> {
     const db = await this.getDatabase();
+    let rows: any[];
     if (department && department !== 'Todas') {
-      return db.getAllAsync<RoomConfig>(
+      rows = await db.getAllAsync<any>(
         'SELECT * FROM rooms WHERE department = ? ORDER BY name ASC',
         [department]
       );
+    } else {
+      rows = await db.getAllAsync<any>(
+        'SELECT * FROM rooms ORDER BY department ASC, name ASC'
+      );
     }
-    return db.getAllAsync<RoomConfig>('SELECT * FROM rooms ORDER BY department ASC, name ASC');
+    return rows.map(mapRoom);
   }
 
   async addRoom(room: RoomConfig): Promise<RoomConfig[]> {
     const db = await this.getDatabase();
     await db.runAsync(
-      'INSERT OR REPLACE INTO rooms (id, name, department, capacity, status, notes) VALUES (?, ?, ?, ?, ?, ?)',
-      [room.id, room.name, room.department, room.capacity, room.status, room.notes || '']
+      'INSERT OR REPLACE INTO rooms (id, name, department, staffing_mode, staff_count, positions, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        room.id,
+        room.name,
+        room.department,
+        room.staffingMode,
+        room.staffCount,
+        JSON.stringify(room.positions || []),
+        room.status,
+        room.notes || '',
+      ]
     );
     return this.getRooms();
   }
@@ -136,8 +167,17 @@ export class SQLiteConfigRepository implements ConfigRepository {
   async updateRoom(room: RoomConfig): Promise<RoomConfig[]> {
     const db = await this.getDatabase();
     await db.runAsync(
-      'UPDATE rooms SET name = ?, department = ?, capacity = ?, status = ?, notes = ? WHERE id = ?',
-      [room.name, room.department, room.capacity, room.status, room.notes || '', room.id]
+      'UPDATE rooms SET name = ?, department = ?, staffing_mode = ?, staff_count = ?, positions = ?, status = ?, notes = ? WHERE id = ?',
+      [
+        room.name,
+        room.department,
+        room.staffingMode,
+        room.staffCount,
+        JSON.stringify(room.positions || []),
+        room.status,
+        room.notes || '',
+        room.id,
+      ]
     );
     return this.getRooms();
   }
