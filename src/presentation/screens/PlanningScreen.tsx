@@ -6,6 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  FlatList,
   StyleSheet,
   Alert,
   Modal,
@@ -16,10 +17,14 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { container } from '../../container';
 import { Worker } from '../../domain/entities/Worker';
 import { ShiftConfig, RoomConfig, APP_CONFIG } from '../../domain/constants/appConfig';
-import PlanningReport, {
-  PlanningReportData,
-  PlanningReportRoom,
-} from '../components/PlanningReport';
+import ShiftTemplate, {
+  ShiftTemplateData,
+  ShiftRoom,
+} from '../components/ShiftTemplate';
+import {
+  HospitalSettings,
+  DEFAULT_HOSPITAL_SETTINGS,
+} from '../../domain/ports/ConfigRepository';
 
 interface RoomAssignment {
   workerIds: number[];
@@ -42,18 +47,25 @@ export default function PlanningScreen() {
   const [pickerRoomId, setPickerRoomId] = useState<string | null>(null);
   const [apoyoRoomId, setApoyoRoomId] = useState<string | null>(null);
   const [apoyoName, setApoyoName] = useState('');
-  const [savedReport, setSavedReport] = useState<PlanningReportData | null>(null);
+  const [savedReport, setSavedReport] = useState<ShiftTemplateData | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [hospitalSettings, setHospitalSettings] = useState<HospitalSettings>(
+    DEFAULT_HOSPITAL_SETTINGS
+  );
+  const [workerSearch, setWorkerSearch] = useState('');
 
   const loadData = useCallback(async () => {
     try {
-      const [workersList, deptList, shiftList, roomList] = await Promise.all([
-        container.getWorkersUseCase.execute(),
-        container.configRepository.getDepartments(),
-        container.configRepository.getShifts(),
-        container.configRepository.getRooms(),
-      ]);
+      const [workersList, deptList, shiftList, roomList, hospital] =
+        await Promise.all([
+          container.getWorkersUseCase.execute(),
+          container.configRepository.getDepartments(),
+          container.configRepository.getShifts(),
+          container.configRepository.getRooms(),
+          container.configRepository.getHospitalSettings(),
+        ]);
       setWorkers(workersList);
+      setHospitalSettings(hospital);
       if (deptList.length > 0) {
         setDepartments(deptList);
         setSelectedDept((prev) => (deptList.includes(prev) ? prev : deptList[0]));
@@ -104,7 +116,7 @@ export default function PlanningScreen() {
     const name = apoyoName.trim();
     if (!name) return;
     const current = getAssignment(roomId);
-    if (name !== 'Por Buscar' && current.externalSupports.includes(name)) return;
+    if (name.toLowerCase() !== 'se buscará apoyo' && current.externalSupports.includes(name)) return;
     setAssignment(roomId, {
       ...current,
       externalSupports: [...current.externalSupports, name],
@@ -166,7 +178,7 @@ export default function PlanningScreen() {
       minute: '2-digit',
     });
 
-  const buildReportData = (): PlanningReportData => {
+  const buildReportData = (): ShiftTemplateData => {
     const currentShiftLabel =
       shifts.find((s) => s.id === selectedShift)?.label || selectedShift;
     const uniqueWorkers = new Set<number>();
@@ -174,7 +186,7 @@ export default function PlanningScreen() {
       getAssignment(room.id).workerIds.forEach((id) => uniqueWorkers.add(id));
     });
 
-    const rooms: PlanningReportRoom[] = departmentRooms.map((room) => {
+    const rooms: ShiftRoom[] = departmentRooms.map((room) => {
       const assigned = getAssignment(room.id);
       const assignedWorkers = assigned.workerIds
         .map((id) => workers.find((w) => w.id === id))
@@ -191,6 +203,9 @@ export default function PlanningScreen() {
 
     return {
       appName: APP_CONFIG.appName,
+      hospitalName: hospitalSettings.hospitalName || undefined,
+      logoUri: hospitalSettings.logoUri || undefined,
+      showLogo: hospitalSettings.showLogo,
       title: title.trim(),
       dateLabel: formatDateLabel(planningDate),
       shiftLabel: currentShiftLabel,
@@ -520,7 +535,10 @@ export default function PlanningScreen() {
                     <View style={styles.roomActionsRow}>
                       <TouchableOpacity
                         style={styles.roomActionBtn}
-                        onPress={() => setPickerRoomId(room.id)}
+                        onPress={() => {
+                          setPickerRoomId(room.id);
+                          setWorkerSearch('');
+                        }}
                       >
                         <MaterialCommunityIcons
                           name="account-plus"
@@ -535,7 +553,7 @@ export default function PlanningScreen() {
                         style={styles.roomActionBtn}
                         onPress={() => {
                           setApoyoRoomId(room.id);
-                          setApoyoName('Por Buscar');
+                          setApoyoName('Se Buscará Apoyo');
                         }}
                       >
                         <MaterialCommunityIcons
@@ -615,53 +633,102 @@ export default function PlanningScreen() {
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Añadir Trabajadores</Text>
-              <TouchableOpacity onPress={() => setPickerRoomId(null)}>
+              <TouchableOpacity
+                onPress={() => {
+                  setPickerRoomId(null);
+                  setWorkerSearch('');
+                }}
+              >
                 <MaterialCommunityIcons name="close" size={22} color="#94A3B8" />
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.modalScroll}>
-              {workers.length === 0 ? (
-                <Text style={styles.emptyNotice}>
-                  No hay trabajadores registrados.
-                </Text>
-              ) : (
-                workers.map((worker) => {
-                  const isSelected = pickerRoomId
-                    ? getAssignment(pickerRoomId).workerIds.includes(worker.id!)
-                    : false;
-                  return (
-                    <TouchableOpacity
-                      key={worker.id}
-                      style={[
-                        styles.modalWorkerRow,
-                        isSelected && styles.modalWorkerRowActive,
-                      ]}
-                      onPress={() =>
-                        pickerRoomId && toggleRoomWorker(pickerRoomId, worker.id!)
-                      }
-                    >
-                      <MaterialCommunityIcons
-                        name={
-                          isSelected
-                            ? 'checkbox-marked-circle'
-                            : 'checkbox-blank-circle-outline'
-                        }
-                        size={22}
-                        color={isSelected ? '#10B981' : '#64748B'}
-                      />
-                      <View style={styles.modalWorkerInfo}>
-                        <Text style={styles.modalWorkerName}>
-                          {worker.full_name}
-                        </Text>
-                        <Text style={styles.modalWorkerPosition}>
-                          {worker.position}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })
+            <View style={styles.modalSearchBox}>
+              <MaterialCommunityIcons name="magnify" size={18} color="#64748B" />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Buscar trabajador por nombre o cargo..."
+                placeholderTextColor="#64748B"
+                value={workerSearch}
+                onChangeText={setWorkerSearch}
+                autoCapitalize="words"
+              />
+              {workerSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setWorkerSearch('')}>
+                  <MaterialCommunityIcons
+                    name="close-circle"
+                    size={18}
+                    color="#64748B"
+                  />
+                </TouchableOpacity>
               )}
-            </ScrollView>
+            </View>
+            {(() => {
+              const modalWorkers = workers.filter(
+                (w) =>
+                  w.full_name
+                    .toLowerCase()
+                    .includes(workerSearch.toLowerCase()) ||
+                  w.position
+                    .toLowerCase()
+                    .includes(workerSearch.toLowerCase())
+              );
+              if (modalWorkers.length === 0) {
+                return (
+                  <Text style={styles.emptyNotice}>
+                    {workers.length === 0
+                      ? 'No hay trabajadores registrados.'
+                      : 'Sin resultados para la búsqueda.'}
+                  </Text>
+                );
+              }
+              return (
+                <FlatList
+                  data={modalWorkers}
+                  keyExtractor={(item) => String(item.id)}
+                  keyboardShouldPersistTaps="handled"
+                  style={styles.modalScroll}
+                  showsVerticalScrollIndicator={false}
+                  renderItem={({ item: worker }) => {
+                    const isSelected = pickerRoomId
+                      ? getAssignment(pickerRoomId).workerIds.includes(
+                          worker.id!
+                        )
+                      : false;
+                    return (
+                      <TouchableOpacity
+                        key={worker.id}
+                        style={[
+                          styles.modalWorkerRow,
+                          isSelected && styles.modalWorkerRowActive,
+                        ]}
+                        onPress={() =>
+                          pickerRoomId &&
+                          toggleRoomWorker(pickerRoomId, worker.id!)
+                        }
+                      >
+                        <MaterialCommunityIcons
+                          name={
+                            isSelected
+                              ? 'checkbox-marked-circle'
+                              : 'checkbox-blank-circle-outline'
+                          }
+                          size={22}
+                          color={isSelected ? '#10B981' : '#64748B'}
+                        />
+                        <View style={styles.modalWorkerInfo}>
+                          <Text style={styles.modalWorkerName}>
+                            {worker.full_name}
+                          </Text>
+                          <Text style={styles.modalWorkerPosition}>
+                            {worker.position}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  }}
+                />
+              );
+            })()}
           </View>
         </View>
       </Modal>
@@ -685,7 +752,7 @@ export default function PlanningScreen() {
               style={styles.reportScroll}
               contentContainerStyle={styles.reportScrollContent}
             >
-              {savedReport && <PlanningReport data={savedReport} />}
+              {savedReport && <ShiftTemplate data={savedReport} />}
             </ScrollView>
             <TouchableOpacity
               style={[styles.exportButton, exporting && styles.buttonDisabled]}
@@ -712,9 +779,9 @@ export default function PlanningScreen() {
 
       {/* Off-screen capture target */}
       {savedReport && (
-        <View style={styles.offscreenCapture}>
+        <View style={styles.offscreenCapture} pointerEvents="none">
           <View ref={reportRef} collapsable={false}>
-            <PlanningReport data={savedReport} />
+            <ShiftTemplate data={savedReport} />
           </View>
         </View>
       )}
@@ -1041,6 +1108,24 @@ const styles = StyleSheet.create({
   },
   modalScroll: {
     maxHeight: 400,
+  },
+  modalSearchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+    marginBottom: 12,
+    gap: 8,
+  },
+  modalSearchInput: {
+    flex: 1,
+    color: '#F8FAFC',
+    fontSize: 14,
+    padding: 0,
   },
   modalWorkerRow: {
     flexDirection: 'row',

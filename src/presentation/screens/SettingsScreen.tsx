@@ -8,15 +8,24 @@ import {
   StyleSheet,
   Switch,
   Alert,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { container } from '../../container';
 import { APP_CONFIG, ShiftConfig } from '../../domain/constants/appConfig';
+import {
+  HospitalSettings,
+  DEFAULT_HOSPITAL_SETTINGS,
+} from '../../domain/ports/ConfigRepository';
 
 export default function SettingsScreen() {
   const [autoSync, setAutoSync] = useState(true);
-  const [notifications, setNotifications] = useState(true);
-  const [compactView, setCompactView] = useState(false);
+  const [hospitalSettings, setHospitalSettings] = useState<HospitalSettings>(
+    DEFAULT_HOSPITAL_SETTINGS
+  );
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   // Departments & Shifts state
   const [departments, setDepartments] = useState<string[]>([]);
@@ -28,12 +37,14 @@ export default function SettingsScreen() {
 
   const loadConfig = useCallback(async () => {
     try {
-      const [deptList, shiftList] = await Promise.all([
+      const [deptList, shiftList, hospital] = await Promise.all([
         container.configRepository.getDepartments(),
         container.configRepository.getShifts(),
+        container.configRepository.getHospitalSettings(),
       ]);
       setDepartments(deptList);
       setShifts(shiftList);
+      setHospitalSettings(hospital);
     } catch (error) {
       console.error('Error loading config:', error);
     }
@@ -127,9 +138,11 @@ export default function SettingsScreen() {
   const handleManualSync = async () => {
     try {
       const result = await container.syncWorkersUseCase.execute();
+      const configResult = await container.syncConfigUseCase.execute();
       Alert.alert(
         'Sincronización Exitosa',
-        `Registros subidos: ${result.pushed}\nRegistros descargados: ${result.pulled}`
+        `Trabajadores — subidos: ${result.pushed}, descargados: ${result.pulled}\n` +
+          `Configuración — subidos: ${configResult.pushed}, descargados: ${configResult.pulled}`
       );
     } catch (error) {
       Alert.alert('Error', 'No se pudo sincronizar con la nube.');
@@ -150,6 +163,52 @@ export default function SettingsScreen() {
         },
       ]
     );
+  };
+
+  const handleSaveHospitalName = async () => {
+    try {
+      await container.configRepository.saveHospitalSettings({
+        ...hospitalSettings,
+        hospitalName: hospitalSettings.hospitalName.trim(),
+      });
+      Alert.alert('Guardado', 'Nombre del centro hospitalario actualizado.');
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo guardar el nombre del centro.');
+    }
+  };
+
+  const handleToggleShowLogo = async (value: boolean) => {
+    const next = { ...hospitalSettings, showLogo: value };
+    setHospitalSettings(next);
+    try {
+      await container.configRepository.saveHospitalSettings(next);
+    } catch (error) {
+      console.error('Error saving showLogo:', error);
+    }
+  };
+
+  const handlePickLogo = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets.length > 0) {
+        const next = { ...hospitalSettings, logoUri: result.assets[0].uri };
+        setHospitalSettings(next);
+        setUploadingLogo(true);
+        try {
+          await container.configRepository.saveHospitalSettings(next);
+          Alert.alert('Logo Actualizado', 'El logo se guardó correctamente.');
+        } finally {
+          setUploadingLogo(false);
+        }
+      }
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo cargar el logo.');
+    }
   };
 
   return (
@@ -306,40 +365,103 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      {/* Preferences Section */}
+      {/* Hospital / Institute Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionHeader}>PREFERENCIAS</Text>
+        <Text style={styles.sectionHeader}>CENTRO HOSPITALARIO</Text>
         <View style={styles.card}>
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Notificaciones de Turno</Text>
+              <Text style={styles.settingTitle}>Nombre del Centro</Text>
               <Text style={styles.settingDescription}>
-                Recordatorios de guardias programadas
+                Se muestra en el encabezado de la planificación
               </Text>
             </View>
-            <Switch
-              value={notifications}
-              onValueChange={setNotifications}
-              trackColor={{ false: '#334155', true: '#6366F1' }}
-              thumbColor={notifications ? '#FFFFFF' : '#94A3B8'}
+          </View>
+
+          <View style={styles.hospitalBody}>
+            <TextInput
+              style={styles.input}
+              placeholder="Ej. Hospital Central de Valencia"
+              placeholderTextColor="#94A3B8"
+              value={hospitalSettings.hospitalName}
+              onChangeText={(text) =>
+                setHospitalSettings((prev) => ({
+                  ...prev,
+                  hospitalName: text,
+                }))
+              }
             />
+            <TouchableOpacity
+              style={styles.saveItemButton}
+              onPress={handleSaveHospitalName}
+            >
+              <Text style={styles.saveItemButtonText}>Guardar Nombre</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Vista Compacta de Listas</Text>
+              <Text style={styles.settingTitle}>Mostrar Logo en la Plantilla</Text>
               <Text style={styles.settingDescription}>
-                Mostrar más elementos en pantalla
+                Aparece la foto/logo junto al nombre en la imagen exportada
               </Text>
             </View>
             <Switch
-              value={compactView}
-              onValueChange={setCompactView}
+              value={hospitalSettings.showLogo}
+              onValueChange={handleToggleShowLogo}
               trackColor={{ false: '#334155', true: '#6366F1' }}
-              thumbColor={compactView ? '#FFFFFF' : '#94A3B8'}
+              thumbColor={hospitalSettings.showLogo ? '#FFFFFF' : '#94A3B8'}
             />
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.logoRow}>
+            {hospitalSettings.logoUri ? (
+              <Image
+                source={{ uri: hospitalSettings.logoUri }}
+                style={styles.logoPreview}
+              />
+            ) : (
+              <View style={styles.logoPlaceholder}>
+                <MaterialCommunityIcons
+                  name="hospital-building"
+                  size={22}
+                  color="#94A3B8"
+                />
+              </View>
+            )}
+            <View style={styles.logoInfo}>
+              <Text style={styles.logoTitle}>Logo del Instituto</Text>
+              <Text style={styles.logoDescription}>
+                {hospitalSettings.logoUri
+                  ? 'Logo cargado'
+                  : 'Sin logo. Usa la insignia con inicial por defecto.'}
+              </Text>
+              <TouchableOpacity
+                style={styles.logoUploadButton}
+                onPress={handlePickLogo}
+                disabled={uploadingLogo}
+              >
+                {uploadingLogo ? (
+                  <ActivityIndicator color="#38BDF8" size="small" />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons
+                      name="image-plus"
+                      size={16}
+                      color="#38BDF8"
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={styles.logoUploadText}>
+                      {hospitalSettings.logoUri ? 'Cambiar Logo' : 'Subir Logo'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </View>
@@ -548,5 +670,63 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#F8FAFC',
+  },
+  hospitalBody: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  logoPreview: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    resizeMode: 'contain',
+    marginRight: 14,
+    backgroundColor: '#0F172A',
+  },
+  logoPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: '#0F172A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  logoInfo: {
+    flex: 1,
+  },
+  logoTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F8FAFC',
+  },
+  logoDescription: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  logoUploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.3)',
+  },
+  logoUploadText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#38BDF8',
   },
 });
