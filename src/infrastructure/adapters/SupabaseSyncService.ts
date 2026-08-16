@@ -8,6 +8,7 @@ export class SupabaseSyncService implements SyncService {
       .from('workers')
       .upsert(
         {
+          ...(worker.supabase_id ? { id: Number(worker.supabase_id) } : {}),
           full_name: worker.full_name,
           position: worker.position,
         },
