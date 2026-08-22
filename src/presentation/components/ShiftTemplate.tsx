@@ -5,7 +5,8 @@
  * capturar como imagen con react-native-view-shot. No trae scroll ni botones.
  */
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import LogoImage from './LogoImage';
 
 /* ------------------------------------------------------------------ */
 /* Tipos del JSON                                                      */
@@ -138,7 +139,7 @@ function TemplateHeader({ data }: { data: ShiftTemplateData }) {
       <View style={styles.headerBrandRow}>
         {data.showLogo ? (
           data.logoUri ? (
-            <Image source={{ uri: data.logoUri }} style={styles.headerLogo} />
+            <LogoImage uri={data.logoUri} style={styles.headerLogo} />
           ) : (
             <View style={styles.headerBrandBadge}>
               <Text style={styles.headerBrandInitial}>

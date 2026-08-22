@@ -5,15 +5,18 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  FlatList,
   StyleSheet,
   Switch,
   Alert,
-  Image,
+  Modal,
   ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { container } from '../../container';
+import LogoImage from '../components/LogoImage';
 import { APP_CONFIG, ShiftConfig } from '../../domain/constants/appConfig';
 import {
   HospitalSettings,
@@ -25,6 +28,73 @@ import {
   ThemeColors,
   ThemeName,
 } from '../theme/ThemeProvider';
+
+/** Curated icon list for the shift icon picker (MaterialCommunityIcons) */
+const SHIFT_ICON_OPTIONS: string[] = [
+  'weather-sunny',
+  'weather-sunset',
+  'weather-night',
+  'white-balance-sunny',
+  'moon-waning-crescent',
+  'clock-outline',
+  'clock-time-eight-outline',
+  'clock-time-four-outline',
+  'clock-time-twelve-outline',
+  'alarm',
+  'timer-sand',
+  'calendar-clock',
+  'calendar-today',
+  'briefcase-clock',
+  'hours-24',
+  'hospital-building',
+  'medical-bag',
+  'stethoscope',
+  'pill',
+  'ambulance',
+  'heart-pulse',
+  'shield-cross',
+  'account-group',
+  'account-hard-hat',
+  'hard-hat',
+  'fire',
+  'flash',
+  'lightning-bolt',
+  'star',
+  'star-circle',
+  'coffee',
+  'food-apple',
+  'run-fast',
+  'bed',
+  'door-open',
+  'home',
+  'office-building',
+  'phone',
+  'bell',
+  'check-circle',
+  'alert-circle',
+  'information',
+  'wrench',
+  'cog',
+];
+
+const LOGO_MIME_EXT: Record<string, string> = {
+  'image/svg+xml': 'svg',
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/webp': 'webp',
+};
+
+function resolveLogoExtension(asset: ImagePicker.ImagePickerAsset): string {
+  const fromName = /\.([A-Za-z0-9]+)$/.exec(asset.fileName || '');
+  if (fromName) return fromName[1].toLowerCase();
+  if (asset.mimeType && LOGO_MIME_EXT[asset.mimeType]) {
+    return LOGO_MIME_EXT[asset.mimeType];
+  }
+  const fromUri = /\.([A-Za-z0-9]+)$/.exec((asset.uri || '').split('?')[0]);
+  if (fromUri) return fromUri[1].toLowerCase();
+  return '';
+}
 
 export default function SettingsScreen() {
   const { colors, themeName, setThemeName } = useAppTheme();
@@ -41,8 +111,10 @@ export default function SettingsScreen() {
   const [shifts, setShifts] = useState<ShiftConfig[]>([]);
   const [newDeptName, setNewDeptName] = useState('');
   const [newShiftLabel, setNewShiftLabel] = useState('');
+  const [selectedShiftIcon, setSelectedShiftIcon] = useState('clock-outline');
   const [showAddDept, setShowAddDept] = useState(false);
   const [showAddShift, setShowAddShift] = useState(false);
+  const [showIconPicker, setShowIconPicker] = useState(false);
 
   const loadConfig = useCallback(async () => {
     try {
@@ -90,8 +162,14 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const updated = await container.configRepository.removeDepartment(dept);
-              setDepartments(updated);
+              const { remoteDeleted } = await container.removeConfigUseCase.removeDepartment(dept);
+              setDepartments(await container.configRepository.getDepartments());
+              if (!remoteDeleted) {
+                Alert.alert(
+                  'Sin Conexión',
+                  'El área se eliminó localmente, pero no se pudo eliminar de la nube. Reaparecerá en la próxima sincronización.'
+                );
+              }
             } catch (error) {
               Alert.alert('Error', 'No se pudo eliminar el área.');
             }
@@ -111,10 +189,11 @@ export default function SettingsScreen() {
       const updated = await container.configRepository.addShift({
         id,
         label: newShiftLabel.trim(),
-        icon: 'clock-outline',
+        icon: selectedShiftIcon,
       });
       setShifts(updated);
       setNewShiftLabel('');
+      setSelectedShiftIcon('clock-outline');
       setShowAddShift(false);
       Alert.alert('Éxito', 'Turno agregado correctamente.');
     } catch (error) {
@@ -133,8 +212,14 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const updated = await container.configRepository.removeShift(shift.id);
-              setShifts(updated);
+              const { remoteDeleted } = await container.removeConfigUseCase.removeShift(shift.id);
+              setShifts(await container.configRepository.getShifts());
+              if (!remoteDeleted) {
+                Alert.alert(
+                  'Sin Conexión',
+                  'El turno se eliminó localmente, pero no se pudo eliminar de la nube. Reaparecerá en la próxima sincronización.'
+                );
+              }
             } catch (error) {
               Alert.alert('Error', 'No se pudo eliminar el turno.');
             }
@@ -200,12 +285,60 @@ export default function SettingsScreen() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
+        allowsEditing: false,
         quality: 0.8,
       });
       if (!result.canceled && result.assets.length > 0) {
-        const next = { ...hospitalSettings, logoUri: result.assets[0].uri };
+        const asset = result.assets[0];
+
+        let ext = resolveLogoExtension(asset);
+
+        // Content-sniff: some providers hand out extension-less URIs
+        if (!ext) {
+          try {
+            const head = await FileSystem.readAsStringAsync(asset.uri, {
+              length: 256,
+              encoding: FileSystem.EncodingType.UTF8,
+            });
+            ext = /<svg[\s>]/i.test(head) ? 'svg' : 'png';
+          } catch {
+            ext = 'png';
+          }
+        }
+
+        // Copy to app's document directory so the URI persists across sessions
+        const fileName = `institute_logo_${Date.now()}.${ext}`;
+        const destUri = `${FileSystem.documentDirectory}${fileName}`;
+        try {
+          await FileSystem.copyAsync({ from: asset.uri, to: destUri });
+        } catch (copyError) {
+          console.warn('Could not copy logo, using original URI:', copyError);
+        }
+
+        const finalUri = await FileSystem.getInfoAsync(destUri).then(
+          (info) => (info.exists ? destUri : asset.uri)
+        ).catch(() => asset.uri);
+
+        // Sanity check: an SVG must be readable as valid XML markup
+        if (/\.svg$/i.test(finalUri)) {
+          try {
+            const xml = await FileSystem.readAsStringAsync(finalUri, {
+              encoding: FileSystem.EncodingType.UTF8,
+            });
+            if (!/<svg[\s>]/i.test(xml)) {
+              throw new Error('El archivo no contiene un SVG válido.');
+            }
+          } catch (svgError) {
+            console.error('Invalid SVG logo:', svgError);
+            Alert.alert(
+              'SVG Inválido',
+              'El archivo seleccionado no se pudo leer como un SVG válido. Intenta con otro archivo SVG o una imagen PNG/JPG.'
+            );
+            return;
+          }
+        }
+
+        const next = { ...hospitalSettings, logoUri: finalUri };
         setHospitalSettings(next);
         setUploadingLogo(true);
         try {
@@ -215,8 +348,12 @@ export default function SettingsScreen() {
           setUploadingLogo(false);
         }
       }
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo cargar el logo.');
+    } catch (error: any) {
+      console.error('Logo pick error:', error);
+      Alert.alert(
+        'Error al Cargar Logo',
+        error?.message || 'Ocurrió un error inesperado al intentar cargar la imagen. Intenta con otra imagen en formato PNG o JPG.'
+      );
     }
   };
 
@@ -225,6 +362,7 @@ export default function SettingsScreen() {
   };
 
   return (
+    <>
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Header Banner */}
       <View style={styles.headerBanner}>
@@ -360,6 +498,28 @@ export default function SettingsScreen() {
               value={newShiftLabel}
               onChangeText={setNewShiftLabel}
             />
+            <TouchableOpacity
+              style={styles.iconSelectButton}
+              onPress={() => setShowIconPicker(true)}
+            >
+              <View style={styles.iconSelectLeft}>
+                <View style={styles.iconSelectPreview}>
+                  <MaterialCommunityIcons
+                    name={(selectedShiftIcon || 'clock-outline') as any}
+                    size={22}
+                    color={colors.purple}
+                  />
+                </View>
+                <Text style={styles.iconSelectLabel}>
+                  Icono del turno (toca para elegir)
+                </Text>
+              </View>
+              <MaterialCommunityIcons
+                name="chevron-right"
+                size={20}
+                color={colors.textFaint}
+              />
+            </TouchableOpacity>
             <TouchableOpacity style={styles.saveItemButton} onPress={handleAddShift}>
               <Text style={styles.saveItemButtonText}>Guardar Turno</Text>
             </TouchableOpacity>
@@ -474,9 +634,10 @@ export default function SettingsScreen() {
 
           <View style={styles.logoRow}>
             {hospitalSettings.logoUri ? (
-              <Image
-                source={{ uri: hospitalSettings.logoUri }}
+              <LogoImage
+                uri={hospitalSettings.logoUri}
                 style={styles.logoPreview}
+                onError={(msg) => Alert.alert('Logo', msg)}
               />
             ) : (
               <View style={styles.logoPlaceholder}>
@@ -541,6 +702,54 @@ export default function SettingsScreen() {
         </View>
       </View>
     </ScrollView>
+
+    {/* Shift Icon Picker Modal */}
+    <Modal
+        visible={showIconPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowIconPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Elegir Icono</Text>
+              <TouchableOpacity onPress={() => setShowIconPicker(false)}>
+                <MaterialCommunityIcons name="close" size={22} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={SHIFT_ICON_OPTIONS}
+              keyExtractor={(item) => item}
+              numColumns={5}
+              style={styles.iconGrid}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => {
+                const isSelected = item === selectedShiftIcon;
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.iconCell,
+                      isSelected && styles.iconCellActive,
+                    ]}
+                    onPress={() => {
+                      setSelectedShiftIcon(item);
+                      setShowIconPicker(false);
+                    }}
+                  >
+                    <MaterialCommunityIcons
+                      name={item as any}
+                      size={24}
+                      color={isSelected ? colors.accent : colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -644,6 +853,83 @@ const createStyles = (colors: ThemeColors) =>
       color: '#FFFFFF',
       fontSize: 13,
       fontWeight: '600',
+    },
+    iconSelectButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.background,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 10,
+    },
+    iconSelectLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    iconSelectPreview: {
+      width: 38,
+      height: 38,
+      borderRadius: 8,
+      backgroundColor: colors.purpleTint,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 10,
+    },
+    iconSelectLabel: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontWeight: '500',
+      flex: 1,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    modalContainer: {
+      backgroundColor: colors.surface,
+      borderRadius: 18,
+      width: '100%',
+      maxHeight: '70%',
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 20,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 14,
+    },
+    modalTitle: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: colors.textStrong,
+    },
+    iconGrid: {
+      maxHeight: 360,
+    },
+    iconCell: {
+      flex: 1,
+      aspectRatio: 1,
+      margin: 4,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    iconCellActive: {
+      borderColor: colors.accent,
+      backgroundColor: colors.accentTint,
     },
     card: {
       backgroundColor: colors.surface,
