@@ -39,10 +39,10 @@ export default function PlanningScreen() {
   const [planningDate, setPlanningDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const reportRef = useRef<View>(null);
-  const [shifts, setShifts] = useState<ShiftConfig[]>(APP_CONFIG.defaultShifts);
-  const [selectedShift, setSelectedShift] = useState<string>('morning');
-  const [departments, setDepartments] = useState<string[]>(APP_CONFIG.defaultDepartments);
-  const [selectedDept, setSelectedDept] = useState<string>(APP_CONFIG.defaultDepartments[0] || '');
+  const [shifts, setShifts] = useState<ShiftConfig[]>([]);
+  const [selectedShift, setSelectedShift] = useState<string>('');
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [selectedDept, setSelectedDept] = useState<string>('');
   const [rooms, setRooms] = useState<RoomConfig[]>([]);
   const [notes, setNotes] = useState('');
   const [workers, setWorkers] = useState<Worker[]>([]);

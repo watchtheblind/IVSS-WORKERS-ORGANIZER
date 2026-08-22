@@ -1,5 +1,5 @@
 import { ConfigRepository, HospitalSettings, DEFAULT_HOSPITAL_SETTINGS } from '../../domain/ports/ConfigRepository';
-import { APP_CONFIG, ShiftConfig, RoomConfig, RoomStaffingPosition } from '../../domain/constants/appConfig';
+import { ShiftConfig, RoomConfig, RoomStaffingPosition } from '../../domain/constants/appConfig';
 import { getDatabase } from '../database';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
@@ -33,62 +33,8 @@ function mapRoom(row: any): RoomConfig {
 }
 
 export class SQLiteConfigRepository implements ConfigRepository {
-  private seeded = false;
-
   async getDatabase(): Promise<SQLiteDatabase> {
-    const db = await getDatabase();
-    if (!this.seeded) {
-      await this.seedDefaults(db);
-      this.seeded = true;
-    }
-    return db;
-  }
-
-  private async seedDefaults(db: SQLiteDatabase): Promise<void> {
-    const existingDepts = await db.getAllAsync<{ id: number; name: string }>(
-      'SELECT * FROM departments'
-    );
-    if (existingDepts.length === 0) {
-      for (const dept of APP_CONFIG.defaultDepartments) {
-        await db.runAsync(
-          'INSERT OR IGNORE INTO departments (name) VALUES (?)',
-          [dept]
-        );
-      }
-    }
-
-    const existingShifts = await db.getAllAsync<ShiftConfig>(
-      'SELECT * FROM shifts'
-    );
-    if (existingShifts.length === 0) {
-      for (const shift of APP_CONFIG.defaultShifts) {
-        await db.runAsync(
-          'INSERT OR IGNORE INTO shifts (id, label, icon) VALUES (?, ?, ?)',
-          [shift.id, shift.label, shift.icon]
-        );
-      }
-    }
-
-    const existingRooms = await db.getAllAsync<RoomConfig>(
-      'SELECT * FROM rooms'
-    );
-    if (existingRooms.length === 0) {
-      for (const room of APP_CONFIG.defaultRooms) {
-        await db.runAsync(
-          'INSERT OR IGNORE INTO rooms (id, name, department, staffing_mode, staff_count, positions, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          [
-            room.id,
-            room.name,
-            room.department,
-            room.staffingMode,
-            room.staffCount,
-            JSON.stringify(room.positions || []),
-            room.status,
-            room.notes || '',
-          ]
-        );
-      }
-    }
+    return getDatabase();
   }
 
   async getDepartments(): Promise<string[]> {
