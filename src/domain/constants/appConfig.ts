@@ -22,10 +22,8 @@ export interface RoomConfig {
 
 export interface AppConfig {
   appName: string;
-  appBadge: string;
 }
 
 export const APP_CONFIG: AppConfig = {
   appName: 'FaciTurno',
-  appBadge: 'PLANIFICACIÓN',
 };

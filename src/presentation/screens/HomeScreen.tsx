@@ -86,9 +86,6 @@ export default function HomeScreen() {
               {today.charAt(0).toUpperCase() + today.slice(1)}
             </Text>
           </View>
-          <View style={styles.badgeIVSS}>
-            <Text style={styles.badgeIVSSText}>{APP_CONFIG.appBadge}</Text>
-          </View>
         </View>
       </View>
 
@@ -134,20 +131,6 @@ const createStyles = (colors: ThemeColors) =>
       color: colors.textMuted,
       marginTop: 2,
       textTransform: 'capitalize',
-    },
-    badgeIVSS: {
-      backgroundColor: colors.accentTint,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    badgeIVSSText: {
-      color: colors.accent,
-      fontSize: 11,
-      fontWeight: '700',
-      letterSpacing: 0.5,
     },
     screenContainer: {
       flex: 1,
