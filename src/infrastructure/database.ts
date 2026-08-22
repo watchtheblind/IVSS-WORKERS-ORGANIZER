@@ -22,6 +22,46 @@ async function migrateRooms(db: SQLite.SQLiteDatabase): Promise<void> {
   }
 }
 
+const DEFAULT_DEPARTMENT_NAMES = [
+  'Emergencia Adultos',
+  'Emergencia Pediátrica',
+  'Quirófano Central',
+  'Hospitalización',
+  'Laboratorio Clínico',
+  'Mantenimiento / Servicios',
+];
+
+const DEFAULT_SHIFT_IDS = ['morning', 'afternoon', 'night', '24h'];
+
+const DEFAULT_ROOM_IDS = [
+  'room_1',
+  'room_2',
+  'room_3',
+  'room_4',
+  'room_5',
+  'room_6',
+];
+
+async function purgeFactoryDefaults(db: SQLite.SQLiteDatabase): Promise<void> {
+  const done = await db.getFirstAsync<{ value: string }>(
+    "SELECT value FROM settings WHERE key = 'factory_defaults_purged'"
+  );
+  if (done) return;
+
+  for (const id of DEFAULT_ROOM_IDS) {
+    await db.runAsync('DELETE FROM rooms WHERE id = ?', [id]);
+  }
+  for (const id of DEFAULT_SHIFT_IDS) {
+    await db.runAsync('DELETE FROM shifts WHERE id = ?', [id]);
+  }
+  for (const name of DEFAULT_DEPARTMENT_NAMES) {
+    await db.runAsync('DELETE FROM departments WHERE name = ?', [name]);
+  }
+  await db.runAsync(
+    "INSERT OR REPLACE INTO settings (key, value) VALUES ('factory_defaults_purged', '1')"
+  );
+}
+
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (!dbPromise) {
     dbPromise = (async () => {
@@ -59,6 +99,7 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
         );
       `);
       await migrateRooms(db);
+      await purgeFactoryDefaults(db);
       return db;
     })();
   }
