@@ -14,10 +14,13 @@ export interface SyncService {
   deleteWorker(supabaseId: string): Promise<void>;
   pushDepartments(names: string[]): Promise<void>;
   pullDepartments(): Promise<string[]>;
+  deleteDepartment(name: string): Promise<void>;
   pushShifts(shifts: ShiftConfig[]): Promise<void>;
   pullShifts(): Promise<ShiftConfig[]>;
+  deleteShift(id: string): Promise<void>;
   pushRooms(rooms: RoomConfig[]): Promise<void>;
   pullRooms(): Promise<RoomConfig[]>;
+  deleteRoom(id: string): Promise<void>;
   pushSettings(settings: Record<string, string>): Promise<void>;
   pullSettings(): Promise<Record<string, string>>;
 }

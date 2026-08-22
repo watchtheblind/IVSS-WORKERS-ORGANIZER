@@ -164,8 +164,14 @@ export default function RoomsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const updated = await container.configRepository.removeRoom(room.id);
-              setRooms(updated);
+              const { remoteDeleted } = await container.removeConfigUseCase.removeRoom(room.id);
+              setRooms(await container.configRepository.getRooms());
+              if (!remoteDeleted) {
+                Alert.alert(
+                  'Sin Conexión',
+                  'La sala se eliminó localmente, pero no se pudo eliminar de la nube. Reaparecerá en la próxima sincronización.'
+                );
+              }
             } catch (error) {
               Alert.alert('Error', 'No se pudo eliminar la sala.');
             }

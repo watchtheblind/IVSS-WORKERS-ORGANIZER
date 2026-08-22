@@ -9,6 +9,7 @@ import { GetWorkersUseCase } from './application/use-cases/GetWorkers';
 import { RemoveWorkerUseCase } from './application/use-cases/RemoveWorker';
 import { SyncWorkersUseCase } from './application/use-cases/SyncWorkers';
 import { SyncConfigUseCase } from './application/use-cases/SyncConfig';
+import { RemoveConfigUseCase } from './application/use-cases/RemoveConfig';
 import { GenerateReportImageUseCase } from './application/use-cases/GenerateReportImage';
 
 // --- Driven Adapters (Infrastructure) ---
@@ -25,6 +26,7 @@ const getWorkersUseCase = new GetWorkersUseCase(workerRepository);
 const removeWorkerUseCase = new RemoveWorkerUseCase(workerRepository, syncService);
 const syncWorkersUseCase = new SyncWorkersUseCase(workerRepository, syncService);
 const syncConfigUseCase = new SyncConfigUseCase(configRepository, syncService);
+const removeConfigUseCase = new RemoveConfigUseCase(configRepository, syncService);
 const generateReportImageUseCase = new GenerateReportImageUseCase(imageService, shareService);
 
 export const container = {
@@ -42,6 +44,7 @@ export const container = {
   removeWorkerUseCase,
   syncWorkersUseCase,
   syncConfigUseCase,
+  removeConfigUseCase,
   generateReportImageUseCase,
 };
 

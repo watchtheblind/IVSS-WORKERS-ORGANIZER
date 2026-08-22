@@ -69,6 +69,37 @@ export class SupabaseSyncService implements SyncService {
     return (data || []).map((r) => r.name);
   }
 
+  async deleteDepartment(name: string): Promise<void> {
+    const { error: roomsError } = await supabase
+      .from('rooms')
+      .delete()
+      .eq('department', name);
+    if (roomsError) {
+      throw new Error(`Supabase delete department rooms failed: ${roomsError.message}`);
+    }
+    const { error } = await supabase
+      .from('departments')
+      .delete()
+      .eq('name', name);
+    if (error) {
+      throw new Error(`Supabase delete department failed: ${error.message}`);
+    }
+  }
+
+  async deleteShift(id: string): Promise<void> {
+    const { error } = await supabase.from('shifts').delete().eq('id', id);
+    if (error) {
+      throw new Error(`Supabase delete shift failed: ${error.message}`);
+    }
+  }
+
+  async deleteRoom(id: string): Promise<void> {
+    const { error } = await supabase.from('rooms').delete().eq('id', id);
+    if (error) {
+      throw new Error(`Supabase delete room failed: ${error.message}`);
+    }
+  }
+
   async pushShifts(shifts: ShiftConfig[]): Promise<void> {
     if (shifts.length === 0) return;
     const { error } = await supabase
